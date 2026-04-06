@@ -19,6 +19,7 @@ import me.earth.earthhack.impl.modules.client.configs.ConfigModule;
 import me.earth.earthhack.impl.modules.client.customfont.FontMod;
 import me.earth.earthhack.impl.modules.client.debug.Debug;
 import me.earth.earthhack.impl.modules.client.hud.HUD;
+import me.earth.earthhack.impl.modules.client.konas.KonasHUD;
 import me.earth.earthhack.impl.modules.client.management.Management;
 import me.earth.earthhack.impl.modules.client.media.Media;
 import me.earth.earthhack.impl.modules.client.nospoof.NoSpoof;
@@ -69,6 +70,7 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new Debug());
         this.forceRegister(new FontMod());
         this.forceRegister(new HUD());
+        this.forceRegister(new KonasHUD());
         this.forceRegister(new Management());
         this.forceRegister(new NoSpoof());
         this.forceRegister(new Notifications());
