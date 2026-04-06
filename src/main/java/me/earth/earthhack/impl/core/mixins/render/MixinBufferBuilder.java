@@ -2,8 +2,7 @@ package me.earth.earthhack.impl.core.mixins.render;
 
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.xray.XRay;
-import me.earth.earthhack.impl.modules.render.xray.mode.XrayMode;
+
 import net.minecraft.client.renderer.BufferBuilder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,7 +13,7 @@ import java.nio.IntBuffer;
 @Mixin(BufferBuilder.class)
 public abstract class MixinBufferBuilder
 {
-    private static final ModuleCache<XRay> XRAY = Caches.getModule(XRay.class);
+
 
     @Redirect(
         method = "putColorMultiplier",
@@ -47,13 +46,7 @@ public abstract class MixinBufferBuilder
         }*/
 
         int i = iIn;
-        if (XRAY.isEnabled() && XRAY.get().getMode() == XrayMode.Opacity)
-        {
-            i = XRAY.get().getOpacity() << 24 | i & 16777215;
-            // Color color = new Color(i);
-            // System.out.println("Color: " + color.getRed() + " " + color.getGreen() + " " + color.getBlue());
 
-        }
 
         // return buffer.put(index, new Color(255, 0, 0, 255).getRGB());
         return buffer.put(index, i);

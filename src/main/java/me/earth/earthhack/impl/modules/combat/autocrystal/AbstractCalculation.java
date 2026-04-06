@@ -5,15 +5,13 @@ import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.Earthhack;
 import me.earth.earthhack.impl.core.ducks.entity.IEntity;
 import me.earth.earthhack.impl.managers.Managers;
-import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.combat.antisurround.AntiSurround;
+
 import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.Confirmer;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.*;
-import me.earth.earthhack.impl.modules.combat.legswitch.LegSwitch;
+
 import me.earth.earthhack.impl.modules.combat.offhand.Offhand;
-import me.earth.earthhack.impl.modules.combat.offhand.modes.OffhandMode;
-import me.earth.earthhack.impl.modules.player.speedmine.Speedmine;
+
 import me.earth.earthhack.impl.util.helpers.Finishable;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.Rotate;
 import me.earth.earthhack.impl.util.math.MathUtil;
@@ -49,12 +47,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
 {
     protected static final ModuleCache<Offhand> OFFHAND =
             Caches.getModule(Offhand.class);
-    protected static final ModuleCache<LegSwitch> LEG_SWITCH =
-            Caches.getModule(LegSwitch.class);
-    protected static final ModuleCache<Speedmine> SPEEDMINE =
-            Caches.getModule(Speedmine.class);
-    protected static final ModuleCache<AntiSurround> ANTISURROUND =
-            Caches.getModule(AntiSurround.class);
 
     protected final Set<BlockPos> blackList;
     protected final List<Entity> entities; // maybe filter these by distance?
@@ -207,8 +199,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                    maxY);
 
             // Check LegSwitch again theres some time passing during calc
-            if (LEG_SWITCH.returnIfPresent(LegSwitch::isActive, false)
-                || ANTISURROUND.returnIfPresent(AntiSurround::isActive, false))
+            if (false)
             {
                 return;
             }
@@ -228,9 +219,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                 if (preSpecialCheck()
                     && (!module.requireOnGround.getValue()
                         || RotationUtil.getRotationPlayer().onGround)
-                    && (module.interruptSpeedmine.getValue()
-                        || !SPEEDMINE.isEnabled()
-                        || SPEEDMINE.get().getPos() == null)
+                    && (module.interruptSpeedmine.getValue())
                     && (!module.pickaxeOnly.getValue()
                         || mc.player.getHeldItemMainhand().getItem()
                                  instanceof ItemPickaxe)
@@ -254,9 +243,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                                   .getValue());
 
                     // Check LegSwitch again some time passed during calc
-                    if (LEG_SWITCH.returnIfPresent(LegSwitch::isActive, false)
-                        || ANTISURROUND.returnIfPresent(AntiSurround::isActive,
-                                                                        false))
+                    if (false)
                     {
                         return;
                     }
@@ -442,8 +429,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
     protected boolean check()
     {
         if (!module.spectator.getValue() && mc.player.isSpectator()
-            || ANTISURROUND.returnIfPresent(AntiSurround::isActive, false)
-            || LEG_SWITCH.returnIfPresent(LegSwitch::isActive, false)
             || raw == null
             || entities == null
             || module.stopWhenEating.getValue() && module.isEating()

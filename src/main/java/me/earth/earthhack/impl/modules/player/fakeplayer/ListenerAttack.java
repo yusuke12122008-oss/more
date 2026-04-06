@@ -5,7 +5,7 @@ import me.earth.earthhack.impl.core.ducks.network.ICPacketUseEntity;
 import me.earth.earthhack.impl.event.events.network.PacketEvent;
 import me.earth.earthhack.impl.event.listeners.ModuleListener;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.combat.criticals.Criticals;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.init.MobEffects;
 import net.minecraft.init.SoundEvents;
@@ -14,8 +14,7 @@ import net.minecraft.network.play.client.CPacketUseEntity;
 final class ListenerAttack extends
         ModuleListener<FakePlayer, PacketEvent.Send<CPacketUseEntity>>
 {
-    private static final ModuleCache<Criticals> CRITICALS =
-            Caches.getModule(Criticals.class);
+
 
     public ListenerAttack(FakePlayer module)
     {
@@ -35,8 +34,7 @@ final class ListenerAttack extends
         if (module.fakePlayer.equals(entity))
         {
             event.setCancelled(true);
-            if (CRITICALS.isEnabled()
-                || !mc.player.isSprinting()
+            if (!mc.player.isSprinting()
                     && mc.player.fallDistance > 0.0F
                     && !mc.player.onGround
                     && !mc.player.isOnLadder()

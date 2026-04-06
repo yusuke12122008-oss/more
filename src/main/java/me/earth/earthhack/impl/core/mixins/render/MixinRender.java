@@ -1,6 +1,6 @@
 package me.earth.earthhack.impl.core.mixins.render;
 
-import me.earth.earthhack.impl.modules.render.esp.ESP;
+
 import net.minecraft.client.renderer.entity.Render;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

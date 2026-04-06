@@ -10,11 +10,11 @@ import me.earth.earthhack.impl.event.listeners.ModuleListener;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.safety.Safety;
-import me.earth.earthhack.impl.modules.combat.antisurround.AntiSurround;
+
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.AntiFriendPop;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.BreakValidity;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.CrystalTimeStamp;
-import me.earth.earthhack.impl.modules.combat.legswitch.LegSwitch;
+
 import me.earth.earthhack.impl.util.math.rotation.RotationUtil;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityUtil;
 import me.earth.earthhack.impl.util.misc.MutableWrapper;
@@ -31,10 +31,7 @@ import java.util.List;
 final class ListenerSpawnObject extends
         ModuleListener<AutoCrystal, PacketEvent.Receive<SPacketSpawnObject>>
 {
-    private static final ModuleCache<LegSwitch> LEG_SWITCH =
-            Caches.getModule(LegSwitch.class);
-    private static final ModuleCache<AntiSurround> ANTISURROUND =
-            Caches.getModule(AntiSurround.class);
+
     private static final SettingCache<Float, NumberSetting<Float>, Safety> DMG =
             Caches.getSetting(Safety.class, Setting.class, "MaxDamage", 4.0f);
 
@@ -100,9 +97,7 @@ final class ListenerSpawnObject extends
 
         if (!module.instant.getValue()
             || module.isPingBypass()
-            || !module.breakTimer.passed(module.breakDelay.getValue())
-            || ANTISURROUND.returnIfPresent(AntiSurround::isActive, false)
-            || LEG_SWITCH.returnIfPresent(LegSwitch::isActive, false))
+            || !module.breakTimer.passed(module.breakDelay.getValue()))
         {
             return;
         }

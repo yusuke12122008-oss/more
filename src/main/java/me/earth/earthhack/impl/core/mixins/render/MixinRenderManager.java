@@ -5,7 +5,7 @@ import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.impl.core.ducks.render.IRenderManager;
 import me.earth.earthhack.impl.event.events.render.RenderEntityEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.misc.nointerp.NoInterp;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -33,8 +33,7 @@ public abstract class MixinRenderManager implements IRenderManager
                                                    double z, float entityYaw,
                                                    float partialTicks);
 
-    private static final ModuleCache<NoInterp> NOINTERP =
-            Caches.getModule(NoInterp.class);
+
 
     @Accessor(value = "renderPosX")
     public abstract double getRenderPosX();
@@ -45,104 +44,7 @@ public abstract class MixinRenderManager implements IRenderManager
     @Accessor(value = "renderPosZ")
     public abstract double getRenderPosZ();
 
-    @Redirect(
-        method = "renderEntityStatic",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posX:D",
-            ordinal = 1))
-    public double posXHook0(Entity entity)
-    {
-        return NoInterp.noInterpX(NOINTERP.get(), entity);
-    }
 
-    @Redirect(
-        method = "renderEntityStatic",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posY:D",
-            ordinal = 1))
-    public double posYHook0(Entity entity)
-    {
-        return NoInterp.noInterpY(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "renderEntityStatic",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posZ:D",
-            ordinal = 1))
-    public double posZHook0(Entity entity)
-    {
-        return NoInterp.noInterpZ(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "cacheActiveRenderInfo",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posX:D",
-            ordinal = 1))
-    public double posXHook1(Entity entity)
-    {
-        return NoInterp.noInterpX(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "cacheActiveRenderInfo",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posY:D",
-            ordinal = 1))
-    public double posYHook1(Entity entity)
-    {
-        return NoInterp.noInterpY(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "cacheActiveRenderInfo",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posZ:D",
-            ordinal = 1))
-    public double posZHook1(Entity entity)
-    {
-        return NoInterp.noInterpZ(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "renderMultipass",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posX:D",
-            ordinal = 1))
-    public double posXHook2(Entity entity)
-    {
-        return NoInterp.noInterpX(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "renderMultipass",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posY:D",
-            ordinal = 1))
-    public double posYHook2(Entity entity)
-    {
-        return NoInterp.noInterpY(NOINTERP.get(), entity);
-    }
-
-    @Redirect(
-        method = "renderMultipass",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/Entity;posZ:D",
-            ordinal = 1))
-    public double posZHook2(Entity entity)
-    {
-        return NoInterp.noInterpZ(NOINTERP.get(), entity);
-    }
 
     @SuppressWarnings("InvalidInjectorMethodSignature")
     @Inject(

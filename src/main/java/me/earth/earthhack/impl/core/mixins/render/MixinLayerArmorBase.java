@@ -4,8 +4,8 @@ import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.impl.event.events.render.RenderArmorEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.chams.Chams;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
+
+
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.layers.LayerArmorBase;
 import net.minecraft.entity.Entity;
@@ -25,10 +25,8 @@ import static org.lwjgl.opengl.GL11.*;
 @Mixin(LayerArmorBase.class)
 public abstract class MixinLayerArmorBase {
 
-    private static final ModuleCache<Chams> CHAMS =
-            Caches.getModule(Chams.class);
-    private static final ModuleCache<NoRender> NO_RENDER =
-            Caches.getModule(NoRender.class);
+
+
 
     @Redirect(method = "renderArmorLayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"))
     public void renderArmorHook(ModelBase modelBase, Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale) {
@@ -55,11 +53,6 @@ public abstract class MixinLayerArmorBase {
         Bus.EVENT_BUS.post(post);
     }
 
-    @Inject(method = "renderArmorLayer", at = @At("HEAD"), cancellable = true)
-    public void renderArmorLayer(EntityLivingBase entityLivingBaseIn, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, float scale, EntityEquipmentSlot slotIn, CallbackInfo ci) {
-        if (NO_RENDER.returnIfPresent(m -> !m.isValidArmorPiece(slotIn), false)) {
-            ci.cancel();
-        }
-    }
+
 
 }

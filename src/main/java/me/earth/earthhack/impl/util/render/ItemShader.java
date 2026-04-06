@@ -2,7 +2,7 @@ package me.earth.earthhack.impl.util.render;
 
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.itemchams.ItemChams;
+
 import me.earth.earthhack.impl.util.render.image.EfficientTexture;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -11,8 +11,7 @@ import org.lwjgl.opengl.GL20;
 public class ItemShader extends FramebufferShader
 {
 
-    private static final ModuleCache<ItemChams> ITEM_CHAMS =
-            Caches.getModule(ItemChams.class);
+
 
     public boolean blur;
     public float mix = 0.0f;
@@ -60,15 +59,7 @@ public class ItemShader extends FramebufferShader
         GL20.glUniform1f(getUniform("mixFactor"), mix);
         GL20.glUniform1f(getUniform("minAlpha"), alpha);
         GL13.glActiveTexture(GL13.GL_TEXTURE8);
-        if (ITEM_CHAMS.get().useGif.getValue())
-        {
-            EfficientTexture texture = ITEM_CHAMS.get().gif.getValue().getDynamicTexture();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture != null ? texture.getGlTextureId() : 0);
-        }
-        else
-        {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, ITEM_CHAMS.get().image.getValue().getTexture() != null ? ITEM_CHAMS.get().image.getValue().getTexture().getGlTextureId() : 0);
-        }
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL20.glUniform1i(getUniform("image"), 8);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL20.glUniform1f(getUniform("imageMix"), imageMix);

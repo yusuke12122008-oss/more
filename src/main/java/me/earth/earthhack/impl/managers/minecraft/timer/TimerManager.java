@@ -8,12 +8,11 @@ import me.earth.earthhack.impl.core.ducks.IMinecraft;
 import me.earth.earthhack.impl.core.mixins.util.ITimer;
 import me.earth.earthhack.impl.event.events.misc.TickEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.player.timer.Timer;
+
 
 public class TimerManager extends SubscriberImpl implements Globals
 {
-    private static final ModuleCache<Timer> MODULE =
-            Caches.getModule(Timer.class);
+
 
     private float speed;
 
@@ -38,16 +37,8 @@ public class TimerManager extends SubscriberImpl implements Globals
 
     private void update()
     {
-        if (MODULE.isEnabled())
-        {
-            ((ITimer) ((IMinecraft) mc).getTimer())
-                    .setTickLength(50.0f / MODULE.get().getSpeed());
-        }
-        else
-        {
-            ((ITimer) ((IMinecraft) mc).getTimer())
-                    .setTickLength(50.0f / speed);
-        }
+        ((ITimer) ((IMinecraft) mc).getTimer())
+                .setTickLength(50.0f / speed);
     }
 
     public void setTimer(float speed)

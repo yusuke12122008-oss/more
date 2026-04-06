@@ -6,7 +6,7 @@ import me.earth.earthhack.api.module.util.Category;
 import me.earth.earthhack.api.setting.Setting;
 import me.earth.earthhack.api.setting.settings.BooleanSetting;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.movement.packetfly.PacketFly;
+
 import me.earth.earthhack.impl.util.client.SimpleData;
 import me.earth.earthhack.pingbypass.PingBypass;
 
@@ -16,8 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PbTeleport extends Module {
     private static final ModuleCache<PbTeleport> INSTANCE =
         Caches.getModule(PbTeleport.class);
-    private static final ModuleCache<PacketFly> PACKET_FLY =
-        Caches.getModule(PacketFly.class);
+
 
     protected final Setting<Boolean> async =
         register(new BooleanSetting("Async", false));
@@ -68,7 +67,6 @@ public class PbTeleport extends Module {
     public static boolean isActive() {
         return PingBypass.isConnected()
             && !PingBypass.PACKET_SERVICE.isPacketFlying()
-            && !PACKET_FLY.isEnabled()
             && INSTANCE.isEnabled();
     }
 

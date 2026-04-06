@@ -12,7 +12,7 @@ import me.earth.earthhack.impl.gui.visibility.Visibilities;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.movement.blocklag.mode.BlockLagStage;
 import me.earth.earthhack.impl.modules.movement.blocklag.mode.OffsetMode;
-import me.earth.earthhack.impl.modules.player.freecam.Freecam;
+
 import me.earth.earthhack.impl.util.helpers.blocks.modes.Pop;
 import me.earth.earthhack.impl.util.helpers.disabling.DisablingModule;
 import me.earth.earthhack.impl.util.math.StopWatch;
@@ -31,8 +31,7 @@ import net.minecraft.util.math.BlockPos;
 // TODO: thingy that makes crystals fall on us
 public class BlockLag extends DisablingModule
 {
-    protected static final ModuleCache<Freecam> FREECAM =
-            Caches.getModule(Freecam.class);
+
 
     protected final Setting<BlockLagPages> pages =
             register(new EnumSetting<>("Page", BlockLagPages.Offsets));

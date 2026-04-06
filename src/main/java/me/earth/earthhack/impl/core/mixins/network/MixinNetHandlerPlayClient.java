@@ -8,7 +8,7 @@ import me.earth.earthhack.impl.core.ducks.network.INetHandlerPlayClient;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.misc.packets.Packets;
+
 import me.earth.earthhack.impl.util.thread.Locks;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.network.NetHandlerPlayClient;
@@ -38,8 +38,7 @@ public abstract class MixinNetHandlerPlayClient implements INetHandlerPlayClient
     private static final SettingCache
         <Boolean, BooleanSetting, Management> ACTIVE =
         Caches.getSetting(Management.class, BooleanSetting.class, "MotionService", true);
-    private static final ModuleCache<Packets> PACKETS =
-            Caches.getModule(Packets.class);
+
     @Shadow
     @Final
     private NetworkManager netManager;
@@ -72,21 +71,13 @@ public abstract class MixinNetHandlerPlayClient implements INetHandlerPlayClient
                                                   int posRotationIncrements,
                                                   boolean teleport)
     {
-        if (posRotationIncrements == 0
-            && PACKETS.returnIfPresent(Packets::areMiniTeleportsActive, false))
-        {
-            entity.setPositionAndRotation(x, y, z, yaw, pitch);
-        }
-        else
-        {
-            entity.setPositionAndRotationDirect(x,
-                                                y,
-                                                z,
-                                                yaw,
-                                                pitch,
-                                                posRotationIncrements,
-                                                teleport);
-        }
+        entity.setPositionAndRotationDirect(x,
+                                            y,
+                                            z,
+                                            yaw,
+                                            pitch,
+                                            posRotationIncrements,
+                                            teleport);
     }
 
     @Redirect(

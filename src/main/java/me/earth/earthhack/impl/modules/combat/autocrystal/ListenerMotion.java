@@ -5,12 +5,12 @@ import me.earth.earthhack.impl.Earthhack;
 import me.earth.earthhack.impl.event.events.network.MotionUpdateEvent;
 import me.earth.earthhack.impl.event.listeners.ModuleListener;
 import me.earth.earthhack.impl.managers.Managers;
-import me.earth.earthhack.impl.modules.combat.antisurround.AntiSurround;
+
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.ACRotate;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.RotateMode;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.RotationThread;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.RotationFunction;
-import me.earth.earthhack.impl.modules.combat.legswitch.LegSwitch;
+
 import me.earth.earthhack.impl.util.math.MathUtil;
 import me.earth.earthhack.impl.util.math.rotation.RotationUtil;
 import net.minecraft.util.MouseFilter;
@@ -29,13 +29,7 @@ final class ListenerMotion extends
     @Override
     public void invoke(MotionUpdateEvent event)
     {
-        if (AbstractCalculation.ANTISURROUND
-                .returnIfPresent(AntiSurround::isActive, false)
-            || AbstractCalculation.LEG_SWITCH
-                .returnIfPresent(LegSwitch::isActive, false))
-        {
-            return;
-        }
+
 
         if (event.getStage() == Stage.PRE)
         {

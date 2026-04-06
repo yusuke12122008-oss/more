@@ -6,7 +6,7 @@ import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.pbteleport.PbTeleport;
-import me.earth.earthhack.impl.modules.misc.autoreconnect.AutoReconnect;
+
 import me.earth.earthhack.impl.util.render.SplashScreenHelper;
 import me.earth.earthhack.pingbypass.input.ClientInputService;
 import me.earth.earthhack.pingbypass.input.ServerInputService;
@@ -29,8 +29,7 @@ import java.net.InetAddress;
 import java.security.KeyPair;
 
 public class PingBypass implements Globals {
-    private static final ModuleCache<AutoReconnect> RECONNECT =
-        Caches.getModule(AutoReconnect.class);
+
     private static final ModuleCache<PbTeleport> TELEPORT =
         Caches.getModule(PbTeleport.class);
 
@@ -176,7 +175,6 @@ public class PingBypass implements Globals {
     public static void setStay(boolean stay) {
         PingBypass.stay = stay;
         if (stay) {
-            RECONNECT.get().setConnected(true);
         }
     }
 

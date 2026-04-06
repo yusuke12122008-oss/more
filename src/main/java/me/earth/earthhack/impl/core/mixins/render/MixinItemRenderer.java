@@ -4,17 +4,11 @@ import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.api.event.events.Stage;
 import me.earth.earthhack.impl.event.events.render.RenderItemInFirstPersonEvent;
-import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.handchams.HandChams;
-import me.earth.earthhack.impl.modules.render.handchams.modes.ChamsMode;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
-import me.earth.earthhack.impl.modules.render.viewmodel.ViewModel;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayer;
-import net.minecraft.client.renderer.GlStateManager;
+
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.entity.RenderPlayer;
+import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumHand;
@@ -44,24 +38,7 @@ public abstract class MixinItemRenderer
     private static final ResourceLocation RES_ITEM_GLINT = new ResourceLocation("textures/misc/enchanted_item_glint.png");
     private static final ResourceLocation ENCHANTED_ITEM_GLINT_RES = new ResourceLocation("textures/misc/enchanted_item_glint.png");
 
-    private static final ModuleCache<ViewModel> VIEW_MODEL =
-            Caches.getModule(ViewModel.class);
-    private static final ModuleCache<NoRender> NO_RENDER =
-            Caches.getModule(NoRender.class);
-    private static final ModuleCache<HandChams> HAND_CHAMS =
-            Caches.getModule(HandChams.class);
 
-    @Inject(
-        method = "renderFireInFirstPerson",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void renderFireInFirstPersonHook(CallbackInfo info)
-    {
-        if (NO_RENDER.returnIfPresent(NoRender::noFire, false))
-        {
-            info.cancel();
-        }
-    }
 
     @Redirect(
         method = "renderItemInFirstPerson(F)V",
@@ -82,13 +59,8 @@ public abstract class MixinItemRenderer
                                              ItemStack stack,
                                              float y)
     {
-        float xOffset = VIEW_MODEL.isPresent()
-                            ? VIEW_MODEL.get().getX(hand)
-                            : 0;
-
-        float yOffset = VIEW_MODEL.isPresent()
-                            ? VIEW_MODEL.get().getY(hand)
-                            : 0;
+        float xOffset = 0;
+        float yOffset = 0;
 
         itemRenderer.renderItemInFirstPerson(player,
                                              drinkOffset,
@@ -112,25 +84,6 @@ public abstract class MixinItemRenderer
             shift = At.Shift.AFTER))
     public void pushMatrixHook(CallbackInfo info)
     {
-        if (VIEW_MODEL.isEnabled())
-        {
-            float[] scale = VIEW_MODEL.isPresent()
-                    ? VIEW_MODEL.get().getScale()
-                    : ViewModel.DEFAULT_SCALE;
-
-            float[] translation = VIEW_MODEL.isPresent()
-                    ? VIEW_MODEL.get().getTranslation()
-                    : ViewModel.DEFAULT_TRANSLATION;
-
-            GL11.glScalef(scale[0], scale[1], scale[2]);
-            GL11.glRotatef(translation[0],
-                           translation[1],
-                           translation[2],
-                           translation[3]);
-
-            // ???????????????????? this fucks nametags
-            // GlStateManager.enableDepth();
-        }
     }
 
     /*@Redirect(
@@ -169,61 +122,7 @@ public abstract class MixinItemRenderer
             method = "renderItemInFirstPerson(Lnet/minecraft/client/entity/AbstractClientPlayer;FFLnet/minecraft/util/EnumHand;FLnet/minecraft/item/ItemStack;F)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderArmFirstPerson(FFLnet/minecraft/util/EnumHandSide;)V"))
     public void mrHook(ItemRenderer itemRenderer, float p_187456_1_, float p_187456_2_, EnumHandSide p_187456_3_) {
-        if (HAND_CHAMS.isEnabled()) {
-            if (HAND_CHAMS.get().mode.getValue() == ChamsMode.Normal) {
-                if (HAND_CHAMS.get().chams.getValue()) {
-                    Color handColor = HAND_CHAMS.get().color.getValue();
-                    glPushMatrix();
-                    glPushAttrib(GL_ALL_ATTRIB_BITS);
-                    glDisable(GL_TEXTURE_2D);
-                    glDisable(GL_LIGHTING);
-                    glEnable(GL_BLEND);
-                    glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                    glColor4f(handColor.getRed() / 255.0f, handColor.getGreen() / 255.0f, handColor.getBlue() / 255.0f, handColor.getAlpha() / 255.0f);
-                    renderArmFirstPerson(p_187456_1_, p_187456_2_, p_187456_3_);
-                    glDisable(GL_BLEND);
-                    glEnable(GL_TEXTURE_2D);
-                    glPopAttrib();
-                    glPopMatrix();
-                }
-
-                if (HAND_CHAMS.get().wireframe.getValue()) {
-                    Color handColor = HAND_CHAMS.get().wireFrameColor.getValue();
-                    glPushMatrix();
-                    glPushAttrib(GL_ALL_ATTRIB_BITS);
-                    glDisable(GL_TEXTURE_2D);
-                    glDisable(GL_LIGHTING);
-                    glEnable(GL_BLEND);
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                    glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                    glLineWidth(1.5f);
-                    glDisable(GL_DEPTH_TEST);
-                    glDepthMask(false);
-                    glColor4f(handColor.getRed() / 255.0f, handColor.getGreen() / 255.0f, handColor.getBlue() / 255.0f, handColor.getAlpha() / 255.0f);
-                    renderArmFirstPerson(p_187456_1_, p_187456_2_, p_187456_3_);
-                    glDisable(GL_BLEND);
-                    glEnable(GL_TEXTURE_2D);
-                    glPopAttrib();
-                    glPopMatrix();
-                }
-            } else {
-                glPushAttrib(GL_ALL_ATTRIB_BITS);
-                glDisable(GL_LIGHTING);
-                glEnable(GL_BLEND);
-                glDisable(GL_ALPHA_TEST);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
-                glDisable(GL_TEXTURE_2D);
-                glEnable(GL_POLYGON_OFFSET_LINE);
-                glEnable(GL_STENCIL_TEST);
-                renderArmFirstPerson(p_187456_1_, p_187456_2_, p_187456_3_);
-                glEnable(GL_TEXTURE_2D);
-                renderEffect(p_187456_1_, p_187456_2_, p_187456_3_);
-                glPopAttrib();
-            }
-        } else {
-            renderArmFirstPerson(p_187456_1_, p_187456_2_, p_187456_3_);
-        }
+        renderArmFirstPerson(p_187456_1_, p_187456_2_, p_187456_3_);
     }
 
     @Inject(
@@ -231,9 +130,6 @@ public abstract class MixinItemRenderer
             at = @At("HEAD"),
             cancellable = true)
     public void rotateArmHook(float p_187458_1_, CallbackInfo ci) {
-        if (VIEW_MODEL.isEnabled() && VIEW_MODEL.get().noSway.getValue()) {
-            ci.cancel();
-        }
     }
 
     private void renderEffect(float p_187456_1_, float p_187456_2_, EnumHandSide p_187456_3_) {

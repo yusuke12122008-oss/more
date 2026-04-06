@@ -9,7 +9,7 @@ import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.player.noglitchblocks.NoGlitchBlocks;
+import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.util.helpers.blocks.data.BlockPlacingData;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.PlaceSwing;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.RayTraceMode;
@@ -59,8 +59,6 @@ import java.util.List;
 // TODO: check if we run out of blocks, before sending all the packets...
 public abstract class BlockPlacingModule extends DisablingModule
 {
-    private static final ModuleCache<NoGlitchBlocks> NO_GLITCH_BLOCKS =
-            Caches.getModule(NoGlitchBlocks.class);
     // Make these like not public?
     public final Setting<Integer> blocks =
             register(new NumberSetting<>("Blocks/Place", 4, 1, 10));
@@ -172,9 +170,7 @@ public abstract class BlockPlacingModule extends DisablingModule
         }
 
         // Simulate PlayerControllerMP behaviour.
-        if (!packet.getValue()
-                && !(NO_GLITCH_BLOCKS.isPresent()
-                && NO_GLITCH_BLOCKS.get().noPlace()))
+        if (!packet.getValue())
         {
             ItemStack stack = slot == -2
                     ? mc.player.getHeldItemOffhand()

@@ -5,7 +5,7 @@ import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.player.freecam.Freecam;
+import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.util.math.MathUtil;
 import me.earth.earthhack.impl.util.math.raytrace.RayTracer;
 import me.earth.earthhack.impl.util.render.Interpolation;
@@ -23,16 +23,10 @@ import java.util.function.BiPredicate;
 
 public class RotationUtil implements Globals
 {
-    private static final ModuleCache<Freecam> FREECAM =
-            Caches.getModule(Freecam.class);
     // TODO: use this everywhere!!
     public static EntityPlayer getRotationPlayer()
     {
         EntityPlayer rotationEntity = mc.player;
-        if (FREECAM.isEnabled())
-        {
-            rotationEntity = FREECAM.get().getPlayer();
-        }
 
         return rotationEntity == null ? mc.player : rotationEntity;
     }

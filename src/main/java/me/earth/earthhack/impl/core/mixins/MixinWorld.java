@@ -7,9 +7,7 @@ import me.earth.earthhack.impl.event.events.misc.UpdateEntitiesEvent;
 import me.earth.earthhack.impl.event.events.movement.WaterPushEvent;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.misc.packets.Packets;
-import me.earth.earthhack.impl.modules.player.blocktweaks.BlockTweaks;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
+
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityFallingBlock;
@@ -32,12 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(World.class)
 public abstract class MixinWorld implements IWorld
 {
-    private static final ModuleCache<NoRender> NO_RENDER =
-            Caches.getModule(NoRender.class);
-    private static final ModuleCache<Packets> PACKETS =
-            Caches.getModule(Packets.class);
-    private static final ModuleCache<BlockTweaks> BLOCK_TWEAKS =
-            Caches.getModule(BlockTweaks.class);
+
 
     @Shadow
     @Final
@@ -60,63 +53,7 @@ public abstract class MixinWorld implements IWorld
         return entity.isPushedByWater() && !event.isCancelled();
     }
 
-    @Inject(
-            method = "checkLightFor",
-            at = @At(value = "HEAD"),
-            cancellable = true)
-    public void checkLightForHook(EnumSkyBlock skyBlock,
-                                   BlockPos pos,
-                                   CallbackInfoReturnable<Boolean> info)
-    {
-        if (NO_RENDER.returnIfPresent(NoRender::noSkyLight, false)
-                && skyBlock == EnumSkyBlock.SKY)
-        {
-            info.setReturnValue(false);
-        }
-    }
 
-    @Inject(
-            method = "getRainStrength",
-            at = @At(value = "HEAD"),
-            cancellable = true)
-    public void getRainStrengthHook(
-            CallbackInfoReturnable<Float> callbackInfoReturnable)
-    {
-        if (NO_RENDER.returnIfPresent(NoRender::noWeather, false))
-        {
-            callbackInfoReturnable.setReturnValue(0.0f);
-        }
-    }
-
-    @Inject(
-            method = "spawnParticle(Lnet/minecraft/util/EnumParticleTypes;DDDDDD[I)V",
-            at = @At("HEAD"),
-            cancellable = true)
-    public void spawnParticleHook(EnumParticleTypes particleType,
-                                   double xCoord,
-                                   double yCoord,
-                                   double zCoord,
-                                   double xSpeed,
-                                   double ySpeed,
-                                   double zSpeed,
-                                   int[] parameters,
-                                   CallbackInfo ci)
-    {
-        if (NO_RENDER.isEnabled() && NO_RENDER.get().explosions.getValue())
-        {
-            // TODO: We could actually make an AntiParticles module?
-            //  White/Blacklist certain types?
-            switch (particleType)
-            {
-                case EXPLOSION_NORMAL:
-                case EXPLOSION_LARGE:
-                case EXPLOSION_HUGE:
-                case FIREWORKS_SPARK:
-                    ci.cancel();
-                default:
-            }
-        }
-    }
 
     @Redirect(
             method = "getEntityByID",
@@ -166,14 +103,6 @@ public abstract class MixinWorld implements IWorld
     public void getBlockStateHook(BlockPos pos,
                                    CallbackInfoReturnable<IBlockState> cir)
     {
-        if (PACKETS.isEnabled())
-        {
-            IBlockState state = PACKETS.get().getStateMap().get(pos);
-            if (state != null)
-            {
-                cir.setReturnValue(state);
-            }
-        }
     }
 
     @Redirect(
@@ -185,26 +114,6 @@ public abstract class MixinWorld implements IWorld
                                                AxisAlignedBB bb,
                                                Entity entityIn)
     {
-        if (BLOCK_TWEAKS.returnIfPresent(
-                BlockTweaks::isIgnoreFallingActive, false))
-        {
-            for (Entity entity
-                    : world.getEntitiesWithinAABBExcludingEntity(null, bb))
-            {
-                if (!entity.isDead
-                        && !(entity instanceof EntityFallingBlock)
-                        && entity.preventEntitySpawning
-                        && entity != entityIn
-                        && (entityIn == null
-                        || !entity.isRidingSameEntity(entityIn)))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         return world.checkNoEntityCollision(bb, entityIn);
     }
 

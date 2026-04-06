@@ -9,7 +9,6 @@ import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.RotationFunction;
-import me.earth.earthhack.impl.modules.movement.packetfly.PacketFly;
 import me.earth.earthhack.impl.util.math.StopWatch;
 import me.earth.earthhack.impl.util.network.NetworkUtil;
 import me.earth.earthhack.impl.util.network.PacketUtil;
@@ -17,8 +16,6 @@ import net.minecraft.network.play.client.CPacketPlayer;
 
 public class RotationCanceller implements Globals
 {
-    private static final ModuleCache<PacketFly> PACKETFLY =
-            Caches.getModule(PacketFly.class);
 
     private final StopWatch timer = new StopWatch();
     private final Setting<Integer> maxCancel;
@@ -54,7 +51,7 @@ public class RotationCanceller implements Globals
     public synchronized void onPacket(
             PacketEvent.Send<? extends CPacketPlayer> event)
     {
-        if (event.isCancelled() || PACKETFLY.isEnabled())
+        if (event.isCancelled())
         {
             return;
         }

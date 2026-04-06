@@ -1,6 +1,6 @@
 package me.earth.earthhack.impl.core.mixins.render.entity;
 
-import me.earth.earthhack.impl.modules.render.esp.ESP;
+
 import net.minecraft.client.renderer.entity.RenderGuardian;
 import net.minecraft.entity.monster.EntityGuardian;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,10 +29,7 @@ public abstract class MixinRenderGuardian
                               float partialTicks,
                               CallbackInfo info)
     {
-        if (ESP.isRendering)
-        {
-            info.cancel();
-        }
+
     }
 
 }

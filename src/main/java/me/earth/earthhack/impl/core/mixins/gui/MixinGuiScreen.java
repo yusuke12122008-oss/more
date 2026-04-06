@@ -7,7 +7,7 @@ import me.earth.earthhack.impl.core.ducks.util.IHoverEvent;
 import me.earth.earthhack.impl.core.ducks.util.IStyle;
 import me.earth.earthhack.impl.event.events.render.ToolTipEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.*;
 import net.minecraft.client.renderer.BufferBuilder;
@@ -43,10 +43,7 @@ import java.util.Set;
 @Mixin(GuiScreen.class)
 public abstract class MixinGuiScreen extends Gui implements GuiYesNoCallback
 {
-    private static final ModuleCache<NoRender> NO_RENDER =
-            Caches.getModule(NoRender.class);
-    private static final ResourceLocation BLACK_LOC =
-            new ResourceLocation("earthhack:textures/gui/black.png");
+
 
     @Shadow
     @Final
@@ -106,22 +103,7 @@ public abstract class MixinGuiScreen extends Gui implements GuiYesNoCallback
         }
     }
 
-    @Redirect(
-        method = "drawBackground",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/texture/TextureManager;bindTexture(Lnet/minecraft/util/ResourceLocation;)V"))
-    public void bindTextureHook(TextureManager textureManager, ResourceLocation resource)
-    {
-        if (NO_RENDER.get().isEnabled()
-                && NO_RENDER.get().defaultBackGround.getValue())
-        {
-            textureManager.bindTexture(BLACK_LOC);
-            return;
-        }
 
-        textureManager.bindTexture(OPTIONS_BACKGROUND);
-    }
 
     /**
      * target = {@link GuiScreen#sendChatMessage(String, boolean)}

@@ -5,8 +5,7 @@ import me.earth.earthhack.api.cache.SettingCache;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.movement.packetfly.PacketFly;
+
 import me.earth.earthhack.impl.util.math.MathUtil;
 import me.earth.earthhack.pingbypass.PingBypass;
 import me.earth.earthhack.pingbypass.protocol.C2SPacket;
@@ -18,12 +17,8 @@ import net.minecraft.network.play.client.CPacketPlayer;
 import java.io.IOException;
 
 public class C2SActualPos extends C2SPacket implements Globals {
-    private static final SettingCache
-        <Double, NumberSetting<Double>, Management> RANGE =
-        Caches.getSetting(Management.class, NumberSetting.class,
-                          "PB-Position-Range", 5.0);
-    private static final ModuleCache<PacketFly> PACKET_FLY =
-        Caches.getModule(PacketFly.class);
+    private static final double RANGE = 5.0;
+
 
     private boolean packetFly;
     private double x;
@@ -39,7 +34,7 @@ public class C2SActualPos extends C2SPacket implements Globals {
         this.x = x;
         this.y = y;
         this.z = z;
-        this.packetFly = PACKET_FLY.isEnabled();
+        this.packetFly = false;
     }
 
     @Override
@@ -70,7 +65,7 @@ public class C2SActualPos extends C2SPacket implements Globals {
         double pX = packet.getX(this.x) - this.x;
         double pY = packet.getY(this.y) - this.y;
         double pZ = packet.getZ(this.z) - this.z;
-        return pX * pX + pY * pY + pZ * pZ <= MathUtil.square(RANGE.getValue());
+        return pX * pX + pY * pY + pZ * pZ <= MathUtil.square(RANGE);
     }
 
 }

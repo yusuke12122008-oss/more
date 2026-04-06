@@ -6,7 +6,7 @@ import me.earth.earthhack.impl.event.events.network.PacketEvent;
 import me.earth.earthhack.impl.event.listeners.ModuleListener;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.player.suicide.Suicide;
+
 import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
 import me.earth.earthhack.impl.util.thread.Locks;
 import me.earth.earthhack.pingbypass.PingBypass;
@@ -22,8 +22,7 @@ import java.util.Set;
 final class ListenerTotem extends
         ModuleListener<Offhand, PacketEvent.Receive<SPacketEntityStatus>>
 {
-    private static final ModuleCache<Suicide> SUICIDE =
-            Caches.getModule(Suicide.class);
+
 
     public ListenerTotem(Offhand module)
     {
@@ -40,8 +39,7 @@ final class ListenerTotem extends
             || event.getPacket().getOpCode() != 35
             || !module.timer.passed(module.delay.getValue())
             || player.getEntityId() !=
-                ((ISPacketEntityStatus) event.getPacket()).getEntityId()
-            || SUICIDE.returnIfPresent(Suicide::deactivateOffhand, false))
+                ((ISPacketEntityStatus) event.getPacket()).getEntityId())
         {
             return;
         }

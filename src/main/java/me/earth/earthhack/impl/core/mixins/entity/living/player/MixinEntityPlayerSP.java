@@ -12,13 +12,7 @@ import me.earth.earthhack.impl.event.events.network.MotionUpdateEvent;
 import me.earth.earthhack.impl.event.events.network.PreMotionUpdateEvent;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.rotationbypass.Compatibility;
-import me.earth.earthhack.impl.modules.misc.portals.Portals;
-import me.earth.earthhack.impl.modules.movement.autosprint.AutoSprint;
-import me.earth.earthhack.impl.modules.movement.autosprint.mode.SprintMode;
-import me.earth.earthhack.impl.modules.movement.elytraflight.ElytraFlight;
-import me.earth.earthhack.impl.modules.movement.elytraflight.mode.ElytraMode;
-import me.earth.earthhack.impl.modules.player.spectate.Spectate;
-import me.earth.earthhack.impl.modules.player.xcarry.XCarry;
+
 import me.earth.earthhack.impl.util.minecraft.MovementUtil;
 import me.earth.earthhack.pingbypass.PingBypass;
 import net.minecraft.client.Minecraft;
@@ -46,18 +40,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer
         implements IEntityPlayerSP
 {
-    private static final ModuleCache<Spectate> SPECTATE =
-        Caches.getModule(Spectate.class);
-    private static final ModuleCache<ElytraFlight> ELYTRA_FLIGHT =
-        Caches.getModule(ElytraFlight.class);
-    private static final ModuleCache<AutoSprint> SPRINT =
-        Caches.getModule(AutoSprint.class);
-    private static final ModuleCache<XCarry> XCARRY =
-        Caches.getModule(XCarry.class);
-    private static final ModuleCache<Portals> PORTALS =
-        Caches.getModule(Portals.class);
-    private static final SettingCache<Boolean, BooleanSetting, Portals> CHAT =
-        Caches.getSetting(Portals.class, BooleanSetting.class, "Chat", true);
+
     private static final ModuleCache<Compatibility> ROTATION_BYPASS =
         Caches.getModule(Compatibility.class);
 
@@ -144,49 +127,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer
     @Shadow
     protected abstract void onUpdateWalkingPlayer();
 
-    /**
-     * target = {@link InventoryPlayer#setItemStack(ItemStack)}.
-     */
-    @Redirect(
-        method = "closeScreenAndDropStack",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/entity/player/InventoryPlayer;" +
-                     "setItemStack(Lnet/minecraft/item/ItemStack;)V"))
-    public void setItemStackHook(InventoryPlayer inventory, ItemStack stack)
-    {
-        if (!XCARRY.isEnabled() || !(mc.currentScreen instanceof GuiInventory))
-        {
-            inventory.setItemStack(stack);
-        }
-    }
 
-    @Redirect(
-        method = "onLivingUpdate",
-        at = @At(
-            value = "INVOKE",
-            target = "net/minecraft/client/entity/EntityPlayerSP.isElytraFlying()Z"))
-    public boolean onLivingUpdateHook(EntityPlayerSP player)
-    {
-        return ELYTRA_FLIGHT.isEnabled()
-                && ELYTRA_FLIGHT.get().getMode() == ElytraMode.Packet
-                || player.isElytraFlying();
-    }
-
-    @ModifyArg(
-        method = "setSprinting",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/entity/AbstractClientPlayer;setSprinting(Z)V"))
-    public boolean setSprintingHook(boolean sprinting)
-    {
-        if (SPRINT.isEnabled() && AutoSprint.canSprintBetter() && (SPRINT.get().getMode() == SprintMode.Rage && MovementUtil.isMoving()))
-        {
-            return true;
-        }
-
-        return sprinting;
-    }
 
     @Inject(
         method = "onUpdate",
@@ -513,32 +454,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer
         }
     }
 
-    @Redirect(
-        method = "onLivingUpdate",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/GuiScreen;doesGuiPauseGame()Z",
-            ordinal = 0))
-    public boolean doesGuiPauseGameHook(GuiScreen guiScreen)
-    {
-        if (PORTALS.isEnabled() && CHAT.getValue())
-        {
-            return true;
-        }
 
-        return guiScreen.doesGuiPauseGame();
-    }
-
-    @Inject(
-        method = "isCurrentViewEntity",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void isCurrentViewEntityHook(CallbackInfoReturnable<Boolean> cir)
-    {
-        if (!isSpectator() && SPECTATE.isEnabled())
-        {
-            cir.setReturnValue(true);
-        }
-    }
 
 }

@@ -6,10 +6,8 @@ import me.earth.earthhack.impl.core.ducks.render.IRenderGlobal;
 import me.earth.earthhack.impl.event.events.render.RenderEntityInWorldEvent;
 import me.earth.earthhack.impl.event.events.render.RenderSkyEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.ambience.Ambience;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
-import me.earth.earthhack.impl.modules.render.xray.XRay;
-import me.earth.earthhack.impl.modules.render.xray.mode.XrayMode;
+
+
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
@@ -26,32 +24,10 @@ public abstract class MixinRenderGlobal implements IRenderGlobal
 {
     @Shadow
     private int countEntitiesRendered;
-    private static final ModuleCache<XRay>
-        XRAY = Caches.getModule(XRay.class);
-    private static final ModuleCache<NoRender>
-        NO_RENDER = Caches.getModule(NoRender.class);
-    private static final ModuleCache<Ambience> AMBIENCE = Caches.getModule(Ambience.class);
 
-    // For Freecam too?
-    @ModifyVariable(
-        method = "setupTerrain",
-        at = @At("HEAD"))
-    public boolean setupTerrainHook(boolean playerSpectator)
-    {
-        if (XRAY.isEnabled() && XRAY.get().getMode() == XrayMode.Opacity)
-        {
-            return true;
-        }
 
-        return playerSpectator;
-    }
 
-    @Inject(method = "renderWorldBorder", at = @At("HEAD"), cancellable = true)
-    public void onRenderWorldBorder(Entity entityIn, float partialTicks, CallbackInfo ci) {
-        if (NO_RENDER.isEnabled() && NO_RENDER.get().worldBorder.getValue()) {
-            ci.cancel();
-        }
-    }
+
 
     /*@Inject(
             method = "renderEntities",

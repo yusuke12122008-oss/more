@@ -2,8 +2,7 @@ package me.earth.earthhack.impl.util.minecraft;
 
 import com.mojang.authlib.GameProfile;
 import me.earth.earthhack.api.util.interfaces.Globals;
-import me.earth.earthhack.impl.modules.player.spectate.EntityPlayerNoInterp;
-import me.earth.earthhack.impl.modules.render.nametags.IEntityNoNametag;
+
 import net.minecraft.block.BlockFalling;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -12,8 +11,9 @@ import net.minecraft.world.World;
 import java.util.List;
 import java.util.UUID;
 
-public class MotionTracker extends EntityPlayerNoInterp
-    implements Globals, IEntityNoNametag
+import net.minecraft.client.entity.EntityOtherPlayerMP;
+public class MotionTracker extends EntityOtherPlayerMP
+    implements Globals
 {
     public double extraPosX;
     public double extraPosY;

@@ -4,8 +4,7 @@ import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.impl.event.events.render.CrystalRenderEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.crystalscale.CrystalScale;
-import me.earth.earthhack.impl.util.animation.TimeAnimation;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.GlStateManager;
@@ -26,8 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 @Mixin(RenderEnderCrystal.class)
 public abstract class MixinRenderEnderCrystal
     extends Render<EntityEnderCrystal> {
-    private static final ModuleCache<CrystalScale> SCALE =
-        Caches.getModule(CrystalScale.class);
+
     @Shadow
     @Final
     private ModelBase modelEnderCrystal;
@@ -55,22 +53,6 @@ public abstract class MixinRenderEnderCrystal
                                float partialTicks,
                                CallbackInfo ci, float f,
                                float f1) {
-        if (SCALE.isEnabled()) {
-            scale = SCALE.get().animate.getValue()
-                ? (float) (SCALE.get().scaleMap.containsKey(
-                entity.getEntityId())
-                ? SCALE.get().scaleMap.get(entity.getEntityId()).getCurrent()
-                : 0.1f)
-                : SCALE.get().scale.getValue();
-
-            TimeAnimation animation = SCALE.get().scaleMap.get(
-                entity.getEntityId());
-            if (animation != null) {
-                animation.add(Minecraft.getMinecraft().getRenderPartialTicks());
-            }
-
-            GlStateManager.scale(scale, scale, scale);
-        }
 
         float limbSwing = 0.0F;
         float limbSwingAmount = f * 3.0F;
@@ -128,17 +110,13 @@ public abstract class MixinRenderEnderCrystal
 
         Bus.EVENT_BUS.post(post);
 
-        if (SCALE.isEnabled()) {
-            GlStateManager.scale(1 / scale, 1 / scale, 1 / scale);
-        }
+
     }
 
     private void exitDoRender(EntityEnderCrystal entity, double x, double y,
                               double z, float entityYaw, float partialTicks,
                               float f1) {
-        if (SCALE.isEnabled()) {
-            GlStateManager.scale(1 / scale, 1 / scale, 1 / scale);
-        }
+
 
         if (this.renderOutlines) {
             GlStateManager.disableOutlineMode();

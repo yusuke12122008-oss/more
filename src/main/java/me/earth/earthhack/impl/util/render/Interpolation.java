@@ -3,10 +3,10 @@ package me.earth.earthhack.impl.util.render;
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.core.ducks.IMinecraft;
-import me.earth.earthhack.impl.core.ducks.entity.IEntityNoInterp;
+
 import me.earth.earthhack.impl.core.ducks.render.IRenderManager;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.misc.nointerp.NoInterp;
+import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.util.render.mutables.MutableBB;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.entity.Entity;
@@ -17,9 +17,6 @@ import net.minecraft.util.math.Vec3d;
 
 public class Interpolation implements Globals
 {
-    private static final ModuleCache<NoInterp> NOINTERP =
-            Caches.getModule(NoInterp.class);
-
     public static Vec3d interpolatedEyePos()
     {
         return mc.player.getPositionEyes(mc.getRenderPartialTicks());
@@ -40,27 +37,12 @@ public class Interpolation implements Globals
         double y;
         double z;
 
-        if (NOINTERP.isEnabled()
-            && NOINTERP.get().isSilent()
-            && entity instanceof IEntityNoInterp
-            && ((IEntityNoInterp) entity).isNoInterping())
-        {
-            x = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpX(), entity.lastTickPosX)
-                    - getRenderPosX();
-            y = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpY(), entity.lastTickPosY)
-                    - getRenderPosY();
-            z = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpZ(), entity.lastTickPosZ)
-                    - getRenderPosZ();
-        }
-        else
-        {
-            x = interpolateLastTickPos(entity.posX, entity.lastTickPosX)
-                    - getRenderPosX();
-            y = interpolateLastTickPos(entity.posY, entity.lastTickPosY)
-                    - getRenderPosY();
-            z = interpolateLastTickPos(entity.posZ, entity.lastTickPosZ)
-                    - getRenderPosZ();
-        }
+        x = interpolateLastTickPos(entity.posX, entity.lastTickPosX)
+                - getRenderPosX();
+        y = interpolateLastTickPos(entity.posY, entity.lastTickPosY)
+                - getRenderPosY();
+        z = interpolateLastTickPos(entity.posZ, entity.lastTickPosZ)
+                - getRenderPosZ();
 
         return new Vec3d(x, y, z);
     }
@@ -71,21 +53,9 @@ public class Interpolation implements Globals
         double y;
         double z;
 
-        if (NOINTERP.isEnabled()
-                && NOINTERP.get().isSilent()
-                && entity instanceof IEntityNoInterp
-                && ((IEntityNoInterp) entity).isNoInterping())
-        {
-            x = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpX(), entity.lastTickPosX);
-            y = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpY(), entity.lastTickPosY);
-            z = interpolateLastTickPos(((IEntityNoInterp) entity).getNoInterpZ(), entity.lastTickPosZ);
-        }
-        else
-        {
-            x = interpolateLastTickPos(entity.posX, entity.lastTickPosX);
-            y = interpolateLastTickPos(entity.posY, entity.lastTickPosY);
-            z = interpolateLastTickPos(entity.posZ, entity.lastTickPosZ);
-        }
+        x = interpolateLastTickPos(entity.posX, entity.lastTickPosX);
+        y = interpolateLastTickPos(entity.posY, entity.lastTickPosY);
+        z = interpolateLastTickPos(entity.posZ, entity.lastTickPosZ);
 
         return new Vec3d(x, y, z);
     }

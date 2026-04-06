@@ -10,21 +10,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 final class ListenerPacketReceive
-        extends ModuleListener<Notification, PacketEvent.Receive<?>> {
+        extends ModuleListener<Notification, PacketEvent.Receive<SPacketEntityStatus>> {
 
     private final Map<String, Integer> popCounter = new HashMap<>();
 
     public ListenerPacketReceive(Notification module) {
-        super(module, PacketEvent.Receive.class);
+        super(module, PacketEvent.Receive.class, SPacketEntityStatus.class);
     }
 
     @Override
-    public void invoke(PacketEvent.Receive<?> event) {
+    public void invoke(PacketEvent.Receive<SPacketEntityStatus> event) {
         if (mc.world == null || mc.player == null) return;
-        if (!(event.getPacket() instanceof SPacketEntityStatus)) return;
 
-        SPacketEntityStatus packet =
-                (SPacketEntityStatus) event.getPacket();
+        SPacketEntityStatus packet = event.getPacket();
         Entity entity = packet.getEntity(mc.world);
         if (!(entity instanceof EntityPlayer)) return;
 

@@ -13,15 +13,8 @@ import me.earth.earthhack.impl.event.events.misc.ReachEvent;
 import me.earth.earthhack.impl.event.events.render.*;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.player.blocktweaks.BlockTweaks;
-import me.earth.earthhack.impl.modules.player.raytrace.RayTrace;
-import me.earth.earthhack.impl.modules.player.spectate.Spectate;
-import me.earth.earthhack.impl.modules.render.ambience.Ambience;
-import me.earth.earthhack.impl.modules.render.blockhighlight.BlockHighlight;
-import me.earth.earthhack.impl.modules.render.esp.ESP;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
-import me.earth.earthhack.impl.modules.render.viewclip.CameraClip;
-import me.earth.earthhack.impl.modules.render.weather.Weather;
+
+
 import me.earth.earthhack.impl.util.math.MathUtil;
 import me.earth.earthhack.impl.util.math.Vector3f;
 import me.earth.earthhack.impl.util.math.raytrace.RayTracer;
@@ -65,36 +58,12 @@ import java.util.List;
 
 @Mixin(EntityRenderer.class)
 public abstract class MixinEntityRenderer implements IEntityRenderer {
-    private static final ModuleCache<NoRender>
-            NO_RENDER = Caches.getModule(NoRender.class);
-    private static final ModuleCache<BlockHighlight>
-            BLOCK_HIGHLIGHT = Caches.getModule(BlockHighlight.class);
-    private static final ModuleCache<BlockTweaks>
-            BLOCK_TWEAKS = Caches.getModule(BlockTweaks.class);
-    private static final ModuleCache<CameraClip>
-            CAMERA_CLIP = Caches.getModule(CameraClip.class);
-    private static final ModuleCache<Weather>
-            WEATHER = Caches.getModule(Weather.class);
-    private static final ModuleCache<RayTrace>
-            RAYTRACE = Caches.getModule(RayTrace.class);
-    private static final ModuleCache<Spectate>
-            SPECTATE = Caches.getModule(Spectate.class);
+
     private static final ModuleCache<Management>
             MANAGEMENT = Caches.getModule(Management.class);
-    private static final ModuleCache<Ambience> 
-            AMBIENCE = Caches.getModule(Ambience.class);
 
-    private static final SettingCache<Boolean, BooleanSetting, CameraClip>
-            EXTEND = Caches.getSetting(CameraClip.class,
-            BooleanSetting.class,
-            "Extend",
-            false);
 
-    private static final SettingCache<Double, NumberSetting<Double>, CameraClip>
-            DISTANCE = Caches.getSetting(CameraClip.class,
-            Setting.class,
-            "Distance",
-            10.0);
+
 
     @Shadow
     @Final
@@ -181,18 +150,6 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
         Project.gluPerspective(fovy, event.getAspectRatio(), zNear, zFar);
     }
 
-    @Inject(
-            method = "renderItemActivation",
-            at = @At("HEAD"),
-            cancellable = true)
-    public void renderItemActivationHook(CallbackInfo info) {
-        if (this.itemActivationItem != null
-                && NO_RENDER.returnIfPresent(NoRender::noTotems, false)
-                && this.itemActivationItem.getItem() == Items.TOTEM_OF_UNDYING) {
-            info.cancel();
-        }
-    }
-
     /**
      * target = {@link GlStateManager#clear(int)}
      */
@@ -229,45 +186,16 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
         Bus.EVENT_BUS.post(new RenderEntitiesEvent());
     }
 
-    /**
-     * target = {@link EntityPlayerSP#prevTimeInPortal}
-     */
-    @Redirect(
-            method = "setupCameraTransform",
-            at = @At(
-                    value = "FIELD",
-                    target = "Lnet/minecraft/client/entity/EntityPlayerSP;" +
-                            "prevTimeInPortal:F"))
-    public float prevTimeInPortalHook(EntityPlayerSP entityPlayerSP) {
-        if (NO_RENDER.returnIfPresent(NoRender::noNausea, false)) {
-            return -3.4028235E38f;
-        }
 
-        return entityPlayerSP.prevTimeInPortal;
-    }
 
-    @Inject(
-            method = "setupFog",
-            at = @At(value = "RETURN"),
-            cancellable = true)
-    public void setupFogHook(int startCoords,
-                             float partialTicks,
-                             CallbackInfo info) {
-        // TODO: Fix this
-        if (NO_RENDER.returnIfPresent(NoRender::noFog, false)) {
-            GlStateManager.setFogDensity(0.0f);
-        }
-    }
+
 
     @Inject(
             method = "hurtCameraEffect",
             at = @At("HEAD"),
             cancellable = true)
     public void hurtCameraEffectHook(float ticks, CallbackInfo info) {
-        if (NO_RENDER.returnIfPresent(NoRender::noHurtCam, false)
-                || ESP.isRendering) {
-            info.cancel();
-        }
+
     }
 
     /**
@@ -288,9 +216,6 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
             Entity entityIn,
             AxisAlignedBB boundingBox,
             Predicate<? super Entity> predicate) {
-        if (BLOCK_TWEAKS.isEnabled() && BLOCK_TWEAKS.get().noMiningTrace()) {
-            return Collections.emptyList();
-        }
 
         try {
             Predicate<? super Entity> p = e ->
@@ -351,9 +276,7 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
                     ordinal = 0),
             require = 1)
     public double changeCameraDistanceHook(double range) {
-        return CAMERA_CLIP.isEnabled() && EXTEND.getValue()
-                ? DISTANCE.getValue()
-                : range;
+        return range;
     }
 
     @ModifyVariable(
@@ -364,11 +287,7 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
                     ordinal = 0),
             require = 1)
     public double orientCameraHook(double range) {
-        return CAMERA_CLIP.isEnabled()
-                ? EXTEND.getValue()
-                ? DISTANCE.getValue()
-                : 4.0
-                : range;
+        return range;
     }
 
     /**
@@ -402,9 +321,6 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V"))
     public void weatherHook(int pass, float partialTicks, long finishTimeNano, CallbackInfo ci) {
-        if (WEATHER.isEnabled()) {
-            WEATHER.get().render(partialTicks);
-        }
     }
 
     @Redirect(
@@ -500,26 +416,7 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
         return entity.rayTrace(blockReachDistance, partialTicks);
     }
 
-    @Redirect(
-            method = "updateCameraAndRender",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/entity/EntityPlayerSP;turn(FF)V"))
-    public void turnHook(EntityPlayerSP entityPlayerSP, float yaw, float pitch) {
-        if (SPECTATE.isEnabled()) {
-            if (SPECTATE.get().shouldTurn()) {
-                EntityPlayer spectate = SPECTATE.get().getRender();
-                if (spectate != null) {
-                    spectate.turn(yaw, pitch);
-                    spectate.rotationYawHead = spectate.rotationYaw;
-                }
-            }
 
-            return;
-        }
-
-        entityPlayerSP.turn(yaw, pitch);
-    }
 
     // Maybe modifyArgs in the future to reduce the amount of calls?
     @Inject(method = "setupFogColor", at = @At("HEAD"), cancellable = true)
@@ -606,32 +503,6 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
     )
     public void updateTextureHook(float partialTicks, CallbackInfo ci)
     {
-        if (AMBIENCE.isEnabled())
-        {
-            for (int i = 0; i < lightmapColors.length; i++)
-            {
-                Color ambientColor = AMBIENCE.get().getColor();
-                int alpha = ambientColor.getAlpha();
-                float modifier = alpha / 255.0f;
-                int color = lightmapColors[i];
-                int[] bgr = MathUtil.toRGBAArray(color);
-                /*int red = (bgr[2] + ambientColor.getRed()) / 2; // half-half mix of both colors
-                int green = (bgr[1] + ambientColor.getGreen()) / 2;
-                int blue = (bgr[0] + ambientColor.getBlue()) / 2;*/
-                Vector3f values = new Vector3f(bgr[2] / 255.0f, bgr[1] / 255.0f, bgr[0] / 255.0f);
-                Vector3f newValues = new Vector3f(ambientColor.getRed() / 255.0f, ambientColor.getGreen() / 255.0f, ambientColor.getBlue() / 255.0f);
-                Vector3f finalValues = MathUtil.mix(values, newValues, modifier);
-
-                /*int red = (int) (((bgr[2] * (1 - modifier)) + (ambientColor.getRed() * modifier)) / 2.0f); // half-half mix of both colors
-                int green = (int) (((bgr[1] * (1 - modifier)) + (ambientColor.getGreen() * modifier)) / 2.0f);
-                int blue = (int) (((bgr[0] * (1 - modifier)) + (ambientColor.getBlue() * modifier)) / 2.0f);*/
-                // lightmapColors[i] = MathUtil.toRGB(red, green, blue);
-                int red = (int) (finalValues.x * 255);
-                int green = (int) (finalValues.y * 255);
-                int blue = (int) (finalValues.z * 255);
-                lightmapColors[i] = -16777216 | red << 16 | green << 8 | blue;
-            }
-        }
     }
 
     private RayTraceResult traceInLiquid(Vec3d start,

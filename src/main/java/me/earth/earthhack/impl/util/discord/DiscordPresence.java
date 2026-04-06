@@ -5,7 +5,7 @@ import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
 import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.Earthhack;
-import me.earth.earthhack.impl.modules.misc.rpc.RPC;
+
 import me.earth.earthhack.impl.util.math.StopWatch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,12 +17,9 @@ public class DiscordPresence implements Globals
     private static final Logger LOGGER = LogManager.getLogger(DiscordPresence.class);
     private static final DiscordRichPresence presence = new DiscordRichPresence();
     private static final DiscordRPC rpc = DiscordRPC.INSTANCE;
-    private final RPC module;
     private Thread thread;
-
-    public DiscordPresence(RPC module)
+    public DiscordPresence()
     {
-        this.module = module;
     }
 
     public synchronized void start()
@@ -37,7 +34,7 @@ public class DiscordPresence implements Globals
         rpc.Discord_Initialize("1010130512439955496", handlers, true, "");
         presence.startTimestamp = System.currentTimeMillis() / 1000L;
         presence.details = getDetails();
-        presence.state = module.state.getValue();
+        presence.state = "Playing Minecraft";
         presence.largeImageKey = "logo_1024x1024";
         presence.smallImageKey = "skin";
         presence.smallImageText = Earthhack.NAME + " " + Earthhack.VERSION;
@@ -62,7 +59,7 @@ public class DiscordPresence implements Globals
 
                 rpc.Discord_RunCallbacks();
                 presence.details = getDetails();
-                presence.state = module.state.getValue();
+                presence.state = "Playing Minecraft";
                 if (timer.passed(TimeUnit.SECONDS.toMillis(15)))
                 {
                     // TODO: only when an update is needed?
@@ -89,9 +86,7 @@ public class DiscordPresence implements Globals
 
     private String getDetails()
     {
-        return module.customDetails.getValue()
-            ? module.details.getValue()
-            : mc.player == null
+        return mc.player == null
                 ? "Not ingame"
                 : mc.isIntegratedServerRunning()
                     ? "Playing SinglePlayer"

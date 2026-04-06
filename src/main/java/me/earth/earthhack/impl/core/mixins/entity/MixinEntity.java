@@ -16,12 +16,7 @@ import me.earth.earthhack.impl.event.events.movement.OnGroundEvent;
 import me.earth.earthhack.impl.event.events.movement.StepEvent;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.misc.nointerp.NoInterp;
-import me.earth.earthhack.impl.modules.movement.autosprint.AutoSprint;
-import me.earth.earthhack.impl.modules.movement.autosprint.mode.SprintMode;
-import me.earth.earthhack.impl.modules.movement.step.Step;
 import me.earth.earthhack.impl.modules.movement.velocity.Velocity;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
 import me.earth.earthhack.impl.util.math.StopWatch;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityType;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -46,20 +41,7 @@ import java.util.function.Supplier;
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IEntity, Globals
 {
-    private static final ModuleCache<NoRender>
-            NO_RENDER = Caches.getModule(NoRender.class);
-    private static final ModuleCache<AutoSprint>
-        SPRINT = Caches.getModule(AutoSprint.class);
-    private static final ModuleCache<Velocity>
-        VELOCITY = Caches.getModule(Velocity.class);
-    private static final ModuleCache<NoInterp>
-        NOINTERP = Caches.getModule(NoInterp.class);
-    private static final SettingCache<Boolean, BooleanSetting, Velocity>
-        NO_PUSH = Caches.getSetting
-            (Velocity.class, BooleanSetting.class, "NoPush", false);
-    private static final SettingCache<Boolean, BooleanSetting, Step>
-        STEP_COMP = Caches.getSetting
-            (Step.class, BooleanSetting.class, "Compatibility", false);
+
 
     private static final SettingCache
         <Integer, NumberSetting<Integer>, Management> DEATH_TIME =
@@ -121,7 +103,7 @@ public abstract class MixinEntity implements IEntity, Globals
 
     private final StopWatch pseudoWatch = new StopWatch();
     private MoveEvent moveEvent;
-    private Float prevHeight;
+
     private Supplier<EntityType> type;
     private boolean pseudoDead;
     private long stamp;
@@ -246,20 +228,7 @@ public abstract class MixinEntity implements IEntity, Globals
         this.stamp = System.currentTimeMillis();
     }
 
-    @Inject(
-        method = "createRunningParticles",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void createRunningParticlesHook(CallbackInfo ci)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this)
-                && SPRINT.isEnabled()
-                && SPRINT.get().getMode() == SprintMode.Rage)
-        {
-            ci.cancel();
-        }
-    }
+
 
     @Inject(
         method = "move",
@@ -323,121 +292,7 @@ public abstract class MixinEntity implements IEntity, Globals
                     : entity.isSneaking();
     }
 
-    @Inject(
-        method = "move",
-        at = @At(
-                value = "FIELD",
-                target = "net/minecraft/entity/Entity.onGround:Z",
-                ordinal = 1))
-    public void onGroundHook(MoverType type,
-                              double x,
-                              double y,
-                              double z,
-                              CallbackInfo info)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && !STEP_COMP.getValue()) {
-            StepEvent event = new StepEvent(Stage.PRE,
-                                            this.getEntityBoundingBox(),
-                                            this.stepHeight);
-            Bus.EVENT_BUS.post(event);
-            this.prevHeight = this.stepHeight;
-            this.stepHeight = event.getHeight();
-        }
-    }
 
-    @Inject(
-        method = "move",
-        at = @At(
-            value = "FIELD",
-            target = "net/minecraft/entity/Entity.stepHeight:F",
-            ordinal = 3,
-            shift = At.Shift.BEFORE))
-    public void onGroundHookComp(MoverType type,
-                                  double x,
-                                  double y,
-                                  double z,
-                                  CallbackInfo info) {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && STEP_COMP.getValue()) {
-            StepEvent event = new StepEvent(Stage.PRE,
-                                            this.getEntityBoundingBox(),
-                                            this.stepHeight);
-            Bus.EVENT_BUS.post(event);
-            this.prevHeight = this.stepHeight;
-            this.stepHeight = event.getHeight();
-        }
-    }
-
-    @Inject(
-        method = "move",
-        at = @At(
-            value = "FIELD",
-            target = "net/minecraft/entity/Entity.onGround:Z",
-            ordinal = 2,
-            shift = At.Shift.AFTER))
-    public void onGroundHook2(MoverType type,
-                               double x,
-                               double y,
-                               double z,
-                               CallbackInfo info)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this))
-        {
-            OnGroundEvent event = new OnGroundEvent();
-            Bus.EVENT_BUS.post(event);
-            this.onGround = this.onGround || event.isCancelled();
-        }
-    }
-
-    /**
-     * target = {@link Entity#setEntityBoundingBox(AxisAlignedBB)}
-     */
-    @Inject(
-        method = "move",
-        at = @At(
-            value = "INVOKE",
-            target = "net/minecraft/entity/Entity.setEntityBoundingBox"
-                     + "(Lnet/minecraft/util/math/AxisAlignedBB;)V",
-            ordinal = 7,
-            shift = At.Shift.AFTER))
-    public void setEntityBoundingBoxHook(MoverType type,
-                                          double x,
-                                          double y,
-                                          double z,
-                                          CallbackInfo info)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && !STEP_COMP.getValue())
-        {
-            StepEvent event = new StepEvent(Stage.POST,
-                                            this.getEntityBoundingBox(),
-                                            this.prevHeight != null
-                                                    ? this.prevHeight
-                                                    : 0.0F);
-            Bus.EVENT_BUS.postReversed(event, null);
-        }
-    }
-
-    @Inject(
-        method = "move",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/profiler/Profiler;endSection()V"))
-    public void stepCompHook(MoverType type, double x, double y, double z, CallbackInfo ci)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && STEP_COMP.getValue())
-        {
-            StepEvent event = new StepEvent(Stage.POST,
-                                            this.getEntityBoundingBox(),
-                                            this.prevHeight != null
-                                                ? this.prevHeight
-                                                : 0.0F);
-            Bus.EVENT_BUS.postReversed(event, null);
-        }
-    }
 
     @Inject(method = "setPositionAndRotation", at = @At("RETURN"))
     public void setPositionAndRotationHook(double x,
@@ -455,25 +310,7 @@ public abstract class MixinEntity implements IEntity, Globals
         }
     }
 
-    @Inject(
-        method = "move",
-        at = @At(
-            value = "INVOKE",
-            target = "net/minecraft/entity/Entity.resetPositionToBB()V",
-            ordinal = 1))
-    public void resetPositionToBBHook(MoverType type,
-                                       double x,
-                                       double y,
-                                       double z,
-                                       CallbackInfo info)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && this.prevHeight != null)
-        {
-            this.stepHeight = this.prevHeight;
-            this.prevHeight = null;
-        }
-    }
+
 
     @Inject(
         method = "move",
@@ -517,44 +354,6 @@ public abstract class MixinEntity implements IEntity, Globals
         }
     }
 
-    @Inject(method = "setDead", at = @At("RETURN"))
-    public void setDeadHook(CallbackInfo ci)
-    {
-        if (NOINTERP.isPresent() && NOINTERP.get().shouldFixDeathJitter())
-        {
-            removeInterpolation();
-            // schedule as well in case this was called on a different thread.
-            mc.addScheduledTask(this::removeInterpolation);
-        }
-    }
 
-    @Inject(method = "canRenderOnFire", at = @At("HEAD"), cancellable = true)
-    public void canRenderOnFireHook(CallbackInfoReturnable<Boolean> cir)
-    {
-        if (NO_RENDER.isEnabled() && NO_RENDER.get().noEntityFire()) cir.setReturnValue(false);
-    }
-
-    private void removeInterpolation()
-    {
-        this.prevPosX = this.posX;
-        this.prevPosY = this.posY;
-        this.prevPosZ = this.posZ;
-
-        this.lastTickPosX = this.posX;
-        this.lastTickPosY = this.posY;
-        this.lastTickPosZ = this.posZ;
-
-        this.prevHeight = this.height;
-
-        this.prevRotationPitch = this.rotationPitch;
-        this.prevRotationYaw = this.rotationYaw;
-
-        if (this instanceof IEntityNoInterp)
-        {
-            ((IEntityNoInterp) this).setNoInterpX(this.posX);
-            ((IEntityNoInterp) this).setNoInterpY(this.posY);
-            ((IEntityNoInterp) this).setNoInterpZ(this.posZ);
-        }
-    }
 
 }

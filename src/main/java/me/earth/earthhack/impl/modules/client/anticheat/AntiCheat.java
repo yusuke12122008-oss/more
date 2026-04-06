@@ -16,7 +16,7 @@ import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.ACRotate;
 import me.earth.earthhack.impl.modules.combat.killaura.KillAura;
 import me.earth.earthhack.impl.modules.movement.blocklag.BlockLag;
-import me.earth.earthhack.impl.modules.player.scaffold.Scaffold;
+
 import me.earth.earthhack.impl.util.client.ModuleUtil;
 import me.earth.earthhack.impl.util.client.SettingUtil;
 import me.earth.earthhack.impl.util.client.SimpleData;
@@ -34,9 +34,6 @@ public class AntiCheat extends Module {
     private static final SettingCache<Boolean, Setting<Boolean>, KillAura>
         KILL_AURA_ROTATE = Caches.getSetting(
             KillAura.class, BooleanSetting.class, "Rotate", false);
-    private static final SettingCache<Boolean, Setting<Boolean>, Scaffold>
-        SCAFFOLD_ROTATE = Caches.getSetting(
-        Scaffold.class, BooleanSetting.class, "Rotate", false);
 
     protected final Setting<Boolean> sync =
         register(new BooleanSetting("Sync", false));
@@ -123,8 +120,7 @@ public class AntiCheat extends Module {
 
         addIterateObserver(placeAttack, (e, s) -> {
             if ((s.getContainer() instanceof ObbyModule
-                || s.getContainer() instanceof BlockLag
-                || s.getContainer() instanceof Scaffold)
+                || s.getContainer() instanceof BlockLag)
                 && "Attack".equals(s.getName())
                 && s.getInitial() instanceof Boolean) {
                 set(s, e.getValue());
@@ -142,10 +138,6 @@ public class AntiCheat extends Module {
         });
 
         addSyncedObserver(placeRotations, e -> {
-            Setting<Boolean> scaffoldRotate = SCAFFOLD_ROTATE.get();
-            if (scaffoldRotate != null) {
-                set(scaffoldRotate, e.getValue() != Rotate.None);
-            }
         });
 
         addIterateObserver(placeRotations, (e, s) -> {

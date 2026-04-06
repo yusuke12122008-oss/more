@@ -3,7 +3,7 @@ package me.earth.earthhack.impl.managers.minecraft.combat;
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
-import me.earth.earthhack.impl.modules.combat.autotrap.AutoTrap;
+
 import me.earth.earthhack.impl.modules.combat.killaura.KillAura;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -14,8 +14,7 @@ public class TargetManager
             Caches.getModule(AutoCrystal.class);
     private static final ModuleCache<KillAura> KILL_AURA =
             Caches.getModule(KillAura.class);
-    private static final ModuleCache<AutoTrap> AUTO_TRAP =
-            Caches.getModule(AutoTrap.class);
+
 
     public Entity getKillAura()
     {
@@ -24,7 +23,7 @@ public class TargetManager
 
     public EntityPlayer getAutoTrap()
     {
-        return AUTO_TRAP.returnIfPresent(AutoTrap::getTarget, null);
+        return null;
     }
 
     public EntityPlayer getAutoCrystal()

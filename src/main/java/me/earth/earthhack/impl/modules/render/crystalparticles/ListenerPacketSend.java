@@ -7,9 +7,9 @@ import net.minecraft.entity.item.EntityEnderCrystal;
 import net.minecraft.network.play.client.CPacketUseEntity;
 
 final class ListenerPacketSend
-        extends ModuleListener<CrystalParticles, PacketEvent.Send<?>>
+        extends ModuleListener<Crystalparticles, PacketEvent.Send<?>>
 {
-    public ListenerPacketSend(CrystalParticles module)
+    public ListenerPacketSend(Crystalparticles module)
     {
         super(module, PacketEvent.Send.class);
     }

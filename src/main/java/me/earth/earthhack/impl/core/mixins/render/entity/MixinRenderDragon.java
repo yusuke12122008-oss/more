@@ -1,6 +1,6 @@
 package me.earth.earthhack.impl.core.mixins.render.entity;
 
-import me.earth.earthhack.impl.modules.render.esp.ESP;
+
 import net.minecraft.client.renderer.entity.RenderDragon;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -27,10 +27,7 @@ public abstract class MixinRenderDragon
                                                double healingZ,
                                                CallbackInfo info)
     {
-        if (ESP.isRendering)
-        {
-            info.cancel();
-        }
+
     }
 
 }

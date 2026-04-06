@@ -6,7 +6,7 @@ import me.earth.earthhack.api.event.events.Stage;
 import me.earth.earthhack.impl.event.events.network.EntityChunkEvent;
 import me.earth.earthhack.impl.event.events.network.WorldClientEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.norender.NoRender;
+
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,9 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(WorldClient.class)
 public abstract class MixinWorldClient
 {
-    private static final ModuleCache<NoRender> NO_RENDER =
-            Caches.getModule(NoRender.class);
-
     @Inject(method = "<init>", at = @At(value = "RETURN"))
     public void constructorHook(CallbackInfo callbackInfo)
     {
@@ -35,8 +32,7 @@ public abstract class MixinWorldClient
         at = @At(value = "HEAD"))
     public boolean showBarrierParticlesHook(boolean holdingBarrier)
     {
-        return NO_RENDER.returnIfPresent(NoRender::showBarriers, false)
-                || holdingBarrier;
+        return holdingBarrier;
     }
 
 

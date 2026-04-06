@@ -12,7 +12,7 @@ import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.combat.surround.modes.Movement;
 import me.earth.earthhack.impl.modules.combat.surround.modes.SurroundFreecamMode;
 import me.earth.earthhack.impl.modules.movement.blocklag.BlockLag;
-import me.earth.earthhack.impl.modules.player.freecam.Freecam;
+
 import me.earth.earthhack.impl.util.client.ModuleUtil;
 import me.earth.earthhack.impl.util.helpers.blocks.BlockPlacingModule;
 import me.earth.earthhack.impl.util.helpers.blocks.ObbyModule;
@@ -37,8 +37,7 @@ import java.util.stream.Collectors;
 // TODO: Make City thing better
 public class Surround extends ObbyModule
 {
-    protected static final ModuleCache<Freecam> FREECAM =
-        Caches.getModule(Freecam.class);
+
     protected static final ModuleCache<BlockLag> BLOCKLAG =
         Caches.getModule(BlockLag.class);
 
@@ -214,11 +213,7 @@ public class Surround extends ObbyModule
      */
     private boolean check()
     {
-        if (FREECAM.isEnabled()
-            && freecam.getValue() == SurroundFreecamMode.Off)
-        {
-            return false;
-        }
+
 
         slot = InventoryUtil.findHotbarBlock(Blocks.OBSIDIAN,
                                              Blocks.ENDER_CHEST);
@@ -228,10 +223,7 @@ public class Surround extends ObbyModule
             return false;
         }
 
-        if (FREECAM.isEnabled() && movement.getValue() != Movement.Static)
-        {
-            return timer.passed(delay.getValue());
-        }
+
 
         double teleported;
         double yTeleportRange = MathUtil.square(this.yTeleportRange.getValue());
@@ -606,31 +598,12 @@ public class Surround extends ObbyModule
     @Override
     public EntityPlayer getPlayerForRotations()
     {
-        if (FREECAM.isEnabled())
-        {
-            EntityPlayer target = FREECAM.get().getPlayer();
-            if (target != null)
-            {
-                return target;
-            }
-        }
-
         return mc.player;
     }
 
     @Override
     public EntityPlayer getPlayer()
     {
-        if (freecam.getValue() == SurroundFreecamMode.Origin
-            && FREECAM.isEnabled())
-        {
-            EntityPlayer target = FREECAM.get().getPlayer();
-            if (target != null)
-            {
-                return target;
-            }
-        }
-
         return mc.player;
     }
 

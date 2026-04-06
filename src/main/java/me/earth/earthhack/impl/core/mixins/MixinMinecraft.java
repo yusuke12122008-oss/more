@@ -15,9 +15,7 @@ import me.earth.earthhack.impl.event.events.render.GuiScreenEvent;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.autoconfig.AutoConfig;
-import me.earth.earthhack.impl.modules.player.multitask.MultiTask;
-import me.earth.earthhack.impl.modules.player.sorter.Sorter;
-import me.earth.earthhack.impl.modules.player.spectate.Spectate;
+
 import me.earth.earthhack.impl.util.thread.Locks;
 import me.earth.earthhack.pingbypass.PingBypass;
 import me.earth.earthhack.pingbypass.input.Keyboard;
@@ -57,12 +55,7 @@ import java.util.concurrent.FutureTask;
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft implements IMinecraft
 {
-    private static final ModuleCache<Sorter> SORTER =
-            Caches.getModule(Sorter.class);
-    private static final ModuleCache<MultiTask> MULTI_TASK =
-            Caches.getModule(MultiTask.class);
-    private static final ModuleCache<Spectate> SPECTATE =
-            Caches.getModule(Spectate.class);
+
     private static final ModuleCache<AutoConfig> CONFIG =
             Caches.getModule(AutoConfig.class);
 
@@ -484,7 +477,7 @@ public abstract class MixinMinecraft implements IMinecraft
         target = "Lnet/minecraft/client/entity/EntityPlayerSP;isHandActive()Z"))
     public boolean isHandActiveHook(EntityPlayerSP playerSP)
     {
-        return !MULTI_TASK.isEnabled() && playerSP.isHandActive();
+        return playerSP.isHandActive();
     }
 
     @Redirect(
@@ -497,8 +490,7 @@ public abstract class MixinMinecraft implements IMinecraft
         require = 1)
     public boolean isHittingBlockHook(PlayerControllerMP playerControllerMP)
     {
-        return !MULTI_TASK.isEnabled()
-                    && playerControllerMP.getIsHittingBlock();
+        return playerControllerMP.getIsHittingBlock();
     }
 
     @Inject(
@@ -512,18 +504,6 @@ public abstract class MixinMinecraft implements IMinecraft
         if (world != null)
         {
             Bus.EVENT_BUS.post(new WorldClientEvent.Unload(world));
-        }
-    }
-
-    @Inject(
-        method = "getRenderViewEntity",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void getRenderViewEntityHook(CallbackInfoReturnable<Entity> cir)
-    {
-        if (SPECTATE.isEnabled())
-        {
-            cir.setReturnValue(SPECTATE.get().getRender());
         }
     }
 
@@ -546,9 +526,7 @@ public abstract class MixinMinecraft implements IMinecraft
             target = "Lnet/minecraft/entity/player/InventoryPlayer;currentItem:I"))
     public void processKeyBindsHook(InventoryPlayer inventoryPlayer, int value)
     {
-        Locks.acquire(Locks.PLACE_SWITCH_LOCK, () -> inventoryPlayer.currentItem
-            = SORTER.returnIfPresent(s -> s.getHotbarMapping(value), value)
-        );
+        Locks.acquire(Locks.PLACE_SWITCH_LOCK, () -> inventoryPlayer.currentItem = value);
     }
 
     @Redirect(

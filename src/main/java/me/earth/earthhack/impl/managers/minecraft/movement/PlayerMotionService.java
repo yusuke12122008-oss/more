@@ -13,7 +13,7 @@ import me.earth.earthhack.impl.event.listeners.LambdaListener;
 import me.earth.earthhack.impl.event.listeners.ReceiveListener;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.render.nametags.IEntityNoNametag;
+
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -38,7 +38,7 @@ public class PlayerMotionService extends SubscriberImpl implements Globals {
         this.listeners.add(new LambdaListener<>(TickEvent.class, e -> {
             if (e.isSafe()) {
                 for (EntityPlayer player : mc.world.playerEntities) {
-                    if (!(player instanceof IEntityNoNametag) && !(player instanceof EntityPlayerSP)) {
+                    if (!(player instanceof EntityPlayerSP)) {
                         int ticks = ((IEntityPlayer) player).getTicksWithoutMotionUpdate();
                         if (ticks > UPDATES.getValue() + 1) {
                             player.motionX = 0.0;
@@ -130,7 +130,6 @@ public class PlayerMotionService extends SubscriberImpl implements Globals {
                 if (mc.world != null) {
                     Entity entity = packet.getEntity(mc.world);
                     if (entity instanceof EntityPlayer
-                        && !(entity instanceof IEntityNoNametag)
                         && !(entity instanceof EntityPlayerSP)) {
                         action.accept(entity);
                     }

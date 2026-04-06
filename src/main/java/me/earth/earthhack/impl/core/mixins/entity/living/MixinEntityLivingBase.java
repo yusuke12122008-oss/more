@@ -9,12 +9,7 @@ import me.earth.earthhack.impl.core.mixins.entity.MixinEntity;
 import me.earth.earthhack.impl.event.events.misc.DeathEvent;
 import me.earth.earthhack.impl.event.events.movement.LiquidJumpEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.misc.nointerp.NoInterp;
-import me.earth.earthhack.impl.modules.movement.elytraflight.ElytraFlight;
-import me.earth.earthhack.impl.modules.movement.elytraflight.mode.ElytraMode;
-import me.earth.earthhack.impl.modules.player.fasteat.FastEat;
-import me.earth.earthhack.impl.modules.player.fasteat.mode.FastEatMode;
-import me.earth.earthhack.impl.modules.player.spectate.Spectate;
+
 import me.earth.earthhack.impl.util.minecraft.ICachedDamage;
 import me.earth.earthhack.impl.util.minecraft.MotionTracker;
 import me.earth.earthhack.impl.util.thread.EnchantmentUtil;
@@ -49,14 +44,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity
         implements IEntityLivingBase, IEntityNoInterp,
                         ICachedDamage, IEntityRemoteAttack
 {
-    private static final ModuleCache<ElytraFlight> ELYTRA_FLIGHT =
-            Caches.getModule(ElytraFlight.class);
-    private static final ModuleCache<FastEat> FAST_EAT =
-            Caches.getModule(FastEat.class);
-    private static final ModuleCache<NoInterp> NOINTERP =
-            Caches.getModule(NoInterp.class);
-    private static final ModuleCache<Spectate> SPECTATE =
-            Caches.getModule(Spectate.class);
+
 
     @Shadow
     @Final
@@ -286,162 +274,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity
         }
     }
 
-    @Redirect(
-        method = "onUpdate",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/EntityLivingBase;posX:D"))
-    public double posXHookOnUpdate(EntityLivingBase base)
-    {
-        if (NoInterp.update(NOINTERP.get(), base))
-        {
-            return ((IEntityNoInterp) base).getNoInterpX();
-        }
 
-        return base.posX;
-    }
-
-    @Redirect(
-        method = "onUpdate",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/entity/EntityLivingBase;posZ:D"))
-    public double posZHookOnUpdate(EntityLivingBase base)
-    {
-        if (NOINTERP.isEnabled()
-                && base instanceof IEntityNoInterp
-                && ((IEntityNoInterp) base).isNoInterping()
-                && NOINTERP.get().isSilent())
-        {
-            return ((IEntityNoInterp) base).getNoInterpZ();
-        }
-
-        return base.posZ;
-    }
-
-    @Inject(method = "isElytraFlying", at = @At("HEAD"), cancellable = true)
-    public void isElytraFlyingHook(CallbackInfoReturnable<Boolean> info)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this)
-                && ELYTRA_FLIGHT.isEnabled()
-                && ELYTRA_FLIGHT.get().getMode() == ElytraMode.Packet)
-        {
-            info.setReturnValue(false);
-        }
-    }
-
-    @Inject(
-        method = "notifyDataManagerChange",
-        at = @At("RETURN"))
-    public void notifyDataManagerChangeHook(DataParameter<?> key,
-                                            CallbackInfo info)
-    {
-        if (key.equals(HEALTH)
-                && this.dataManager.get(HEALTH) <= 0.0
-                && this.world != null
-                && this.world.isRemote)
-        {
-            Bus.EVENT_BUS.post(new DeathEvent(
-                    EntityLivingBase.class.cast(this)));
-        }
-    }
-
-    @Inject(
-        method = "handleJumpWater",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void handleJumpWaterHook(CallbackInfo info)
-    {
-        LiquidJumpEvent event =
-                new LiquidJumpEvent(EntityLivingBase.class.cast(this));
-
-        Bus.EVENT_BUS.post(event);
-        if (event.isCancelled())
-        {
-            info.cancel();
-        }
-    }
-
-    @Inject(
-        method = "handleJumpLava",
-        at = @At("HEAD"),
-        cancellable = true)
-    public void handleJumpLavaHook(CallbackInfo info)
-    {
-        LiquidJumpEvent event =
-                new LiquidJumpEvent(EntityLivingBase.class.cast(this));
-
-        Bus.EVENT_BUS.post(event);
-        if (event.isCancelled())
-        {
-            info.cancel();
-        }
-    }
-
-    @Redirect(
-        method = "onItemUseFinish",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/entity/EntityLivingBase;resetActiveHand()V"))
-    public void resetActiveHandHook(EntityLivingBase base)
-    {
-        if (world.isRemote
-                && FAST_EAT.isEnabled()
-                && base instanceof EntityPlayerSP
-                && !mc.isSingleplayer()
-                && FAST_EAT.get().getMode() == FastEatMode.NoDelay
-                && this.activeItemStack.getItem() instanceof ItemFood)
-        {
-            // TODO: service for pick slot cooldown bypass!!!
-            this.activeItemStackUseCount = 0;
-            ((EntityPlayerSP) base).connection
-                .sendPacket(new CPacketPlayerTryUseItem(base.getActiveHand()));
-        }
-        else
-        {
-            base.resetActiveHand();
-        }
-    }
-
-    @Inject(method = "swingArm", at = @At("HEAD"))
-    public void swingArmHook(EnumHand hand, CallbackInfo ci)
-    {
-        //noinspection ConstantConditions
-        if (EntityPlayerSP.class.isInstance(this) && SPECTATE.isEnabled())
-        {
-            EntityPlayer player = SPECTATE.get().getFake();
-            if (player != null)
-            {
-                player.swingArm(hand);
-            }
-        }
-    }
-
-    @Inject(
-        method = "setPositionAndRotationDirect",
-        at = @At("RETURN"))
-    public void setPositionAndRotationDirectHook(double x,
-                                                  double y,
-                                                  double z,
-                                                  float yaw,
-                                                  float pitch,
-                                                  int posRotationIncrements,
-                                                  boolean teleport,
-                                                  CallbackInfo ci)
-    {
-        if (NOINTERP.isEnabled())
-        {
-            NoInterp.handleNoInterp(NOINTERP.get(),
-                                    Entity.class.cast(this),
-                                    posRotationIncrements,
-                                    x,
-                                    y,
-                                    z,
-                                    yaw,
-                                    pitch);
-        }
-    }
 
     @Redirect(
             method = "travel",

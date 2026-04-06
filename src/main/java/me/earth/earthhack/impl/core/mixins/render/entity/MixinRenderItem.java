@@ -3,8 +3,7 @@ package me.earth.earthhack.impl.core.mixins.render.entity;
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.impl.core.ducks.render.IRenderItem;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.itemchams.ItemChams;
-import me.earth.earthhack.impl.modules.render.rainbowenchant.RainbowEnchant;
+
 import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -26,10 +25,7 @@ public abstract class MixinRenderItem implements IRenderItem
 
     private static final ResourceLocation RESOURCE =
             new ResourceLocation("textures/rainbow.png");
-    private static final ModuleCache<RainbowEnchant> ENCHANT =
-            Caches.getModule(RainbowEnchant.class);
-    private static final ModuleCache<ItemChams> ITEM_CHAMS =
-            Caches.getModule(ItemChams.class);
+
 
     @Shadow
     protected abstract void renderModel(IBakedModel model, ItemStack stack);
@@ -50,13 +46,7 @@ public abstract class MixinRenderItem implements IRenderItem
     public void bindHook(TextureManager textureManager,
                          ResourceLocation resource)
     {
-        if (ENCHANT.isEnabled())
-        {
-            textureManager.bindTexture(RESOURCE);
-        } else
-        {
             textureManager.bindTexture(resource);
-        }
     }
 
     @ModifyArg(
@@ -65,14 +55,7 @@ public abstract class MixinRenderItem implements IRenderItem
     )
     public int renderEffectHook(final int glintColor)
     {
-        if (ITEM_CHAMS.isEnabled()
-                && ITEM_CHAMS.get().isModifyingGlint())
-        {
-            return ITEM_CHAMS.get().getGlintColor().getRGB();
-        } else
-        {
             return glintColor;
-        }
     }
 
     /*@Redirect(
@@ -104,14 +87,7 @@ public abstract class MixinRenderItem implements IRenderItem
     )
     public void scaleArgsHook(Args args)
     {
-        if (ITEM_CHAMS.isEnabled()
-                && ITEM_CHAMS.get().isModifyingGlint())
-        {
-            float scale = ITEM_CHAMS.get().getScale();
-            args.set(0, scale);
-            args.set(1, scale);
-            args.set(2, scale);
-        }
+
     }
 
     @ModifyArgs(
@@ -123,11 +99,7 @@ public abstract class MixinRenderItem implements IRenderItem
     )
     public void translateHook(Args args)
     {
-        if (ITEM_CHAMS.isEnabled()
-                && ITEM_CHAMS.get().isModifyingGlint())
-        {
-            args.set(0, (float) args.get(0) * ITEM_CHAMS.get().getFactor());
-        }
+
     }
 
     @ModifyArgs(
@@ -139,11 +111,7 @@ public abstract class MixinRenderItem implements IRenderItem
     )
     public void rotateHook(Args args)
     {
-        if (ITEM_CHAMS.isEnabled()
-                && ITEM_CHAMS.get().isModifyingGlint())
-        {
-            args.set(0, (float) args.get(0) * ITEM_CHAMS.get().getGlintRotate());
-        }
+
     }
 
 }

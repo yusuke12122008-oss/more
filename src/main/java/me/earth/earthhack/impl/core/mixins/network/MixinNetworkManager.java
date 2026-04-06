@@ -11,9 +11,7 @@ import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.impl.core.ducks.network.INetworkManager;
 import me.earth.earthhack.impl.event.events.network.PacketEvent;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.misc.logger.Logger;
-import me.earth.earthhack.impl.modules.misc.logger.util.LoggerMode;
-import me.earth.earthhack.impl.modules.misc.packetdelay.PacketDelay;
+
 import me.earth.earthhack.impl.util.mcp.MappingProvider;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.*;
@@ -31,11 +29,7 @@ import java.util.concurrent.TimeUnit;
 @Mixin(NetworkManager.class)
 public abstract class MixinNetworkManager implements INetworkManager
 {
-    private static final ModuleCache<Logger> LOGGER_MODULE =
-            Caches.getModule(Logger.class);
 
-    private static final ModuleCache<PacketDelay> PACKET_DELAY =
-            Caches.getModule(PacketDelay.class);
 
     @Shadow
     @Final
@@ -76,13 +70,6 @@ public abstract class MixinNetworkManager implements INetworkManager
     @Override
     public Packet<?> sendPacketNoEvent(Packet<?> packet, boolean post)
     {
-        // TODO: use PacketEvent.NoEvent instead!
-        if (LOGGER_MODULE.isEnabled()
-                && LOGGER_MODULE.get().getMode() == LoggerMode.Normal)
-        {
-            LOGGER_MODULE.get().logPacket(packet,
-                    "Sending (No Event) Post: " + post + ", ", false, true);
-        }
 
         PacketEvent.NoEvent<?> event = getNoEvent(packet, post);
         Bus.EVENT_BUS.post(event, packet.getClass());
@@ -144,20 +131,7 @@ public abstract class MixinNetworkManager implements INetworkManager
     }
 
     public void onSendPacket(Packet<?> packet, CallbackInfo ci) {
-        if (PACKET_DELAY.isEnabled()
-            && !PACKET_DELAY.get().packets.contains(packet)
-            && PACKET_DELAY.get().isPacketValid(
-            MappingProvider.simpleName(packet.getClass())))
-        {
-            ci.cancel();
-            PACKET_DELAY.get().service.schedule(() ->
-            {
-                PACKET_DELAY.get().packets.add(packet);
-                sendPacket(packet);
-                PACKET_DELAY.get().packets.remove(packet);
-            }, PACKET_DELAY.get().getDelay(), TimeUnit.MILLISECONDS);
-            return;
-        }
+
 
         PacketEvent.Send<?> event = getSendEvent(packet);
         Bus.EVENT_BUS.post(event, packet.getClass());

@@ -18,8 +18,8 @@ import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.CrystalTimeStamp;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.RotationFunction;
-import me.earth.earthhack.impl.modules.movement.packetfly.PacketFly;
-import me.earth.earthhack.impl.modules.player.suicide.SuicideAutoCrystal;
+
+
 import me.earth.earthhack.impl.util.helpers.blocks.modes.PlaceSwing;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.RayTraceMode;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.Rotate;
@@ -88,8 +88,7 @@ public class AutoCrystal extends Module
             ThreadUtil.newDaemonScheduledExecutor("AutoCrystal");
     private static final ModuleCache<PingBypassModule> PINGBYPASS =
             Caches.getModule(PingBypassModule.class);
-    private static final ModuleCache<PacketFly> PACKET_FLY =
-            Caches.getModule(PacketFly.class);
+
     private static final AtomicBoolean ATOMIC_STARTED =
             new AtomicBoolean();
     private static boolean started;
@@ -1449,8 +1448,7 @@ public class AutoCrystal extends Module
 
     public boolean isNotCheckingRotations() {
         return noPacketFlyRotationChecks.getValue()
-            && (PingBypass.PACKET_SERVICE.isPacketFlying()
-                || PACKET_FLY.isEnabled());
+            && PingBypass.PACKET_SERVICE.isPacketFlying();
     }
 
     /**

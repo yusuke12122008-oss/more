@@ -2,9 +2,9 @@ package me.earth.earthhack.impl.modules.render.crystalparticles;
 
 import me.earth.earthhack.api.module.data.AbstractData;
 
-final class CrystalParticlesData extends AbstractData<CrystalParticles>
+final class CrystalParticlesData extends AbstractData<Crystalparticles>
 {
-    public CrystalParticlesData(CrystalParticles module)
+    public CrystalParticlesData(Crystalparticles module)
     {
         super(module);
         descriptions.put(module.critParticles,

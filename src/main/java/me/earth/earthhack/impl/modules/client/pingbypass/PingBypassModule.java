@@ -22,7 +22,7 @@ import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sSafety.Serv
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sautocrystal.ServerAutoCrystal;
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sautototem.ServerAutoTotem;
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sinventory.ServerInventory;
-import me.earth.earthhack.impl.modules.misc.pingspoof.PingSpoof;
+
 import me.earth.earthhack.impl.modules.player.fakeplayer.FakePlayer;
 import me.earth.earthhack.impl.util.math.StopWatch;
 import me.earth.earthhack.impl.util.network.ServerUtil;
@@ -112,7 +112,7 @@ public class PingBypassModule extends Module
                                             sCrystal,
                                             Managers.MODULES.getByClass(FakePlayer.class),
                                             sSafety,
-                                            Managers.MODULES.getByClass(PingSpoof.class),
+                                            null,
                                             sInventory);
 
         this.listeners.addAll(serializer.getListeners());

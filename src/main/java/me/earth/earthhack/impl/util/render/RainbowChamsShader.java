@@ -2,15 +2,14 @@ package me.earth.earthhack.impl.util.render;
 
 import me.earth.earthhack.api.cache.ModuleCache;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.render.chams.Chams;
+
 import org.lwjgl.opengl.GL20;
 
 public class RainbowChamsShader extends FramebufferShader {
 
     public static final RainbowChamsShader RAINBOW_CHAMS_SHADER = new RainbowChamsShader();
 
-    private final ModuleCache<Chams> CHAMS =
-            Caches.getModule(Chams.class);
+
 
     private final long initTime = System.currentTimeMillis();
 
