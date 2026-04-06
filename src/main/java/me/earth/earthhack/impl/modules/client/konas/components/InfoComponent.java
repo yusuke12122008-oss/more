@@ -27,7 +27,7 @@ public class InfoComponent extends HudComponent
     private static final int BG_COLOR = new Color(15, 15, 15, 160).getRGB();
     private static final int COL_GAP  = 30;   // gap between label and value
 
-    // Whether each line is shown — controlled by KonasHUD settings
+    // Whether each line is shown  - controlled by KonasHUD settings
     public boolean showFps   = true;
     public boolean showPing  = true;
     public boolean showTps   = true;
