@@ -4,143 +4,297 @@ import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.util.render.Render2DUtil;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Manages the notification queue and renders popup notifications.
- * Design ported from a reference with colored backgrounds per type,
- * title + message layout, left accent bar, and progress bar.
+ * CandyPlus-style notification renderer.
+ *
+ * Visual anatomy of one notification card
+ * ----------------------------------------
+ *
+ *   +--+------------------------------------------+
+ *   |  |  [icon] Title                            |
+ *   |  |  Message text                            |
+ *   |  +------------------------------------------+
+ *   |  | [============================------]     |  <- progress bar (type color)
+ *   +--+------------------------------------------+
+ *    ^
+ *    3 px accent bar (type color, full height)
+ *
+ * Details
+ * -------
+ *  - Dark semi-transparent rounded background (radius = 3)
+ *  - 3 px left accent bar in type color
+ *  - Icon glyph + title on first line (type color for icon, white for title)
+ *  - Message text on second line (light grey)
+ *  - Rounded progress bar at bottom; shrinks left-to-right as time passes,
+ *    turns slightly transparent when nearly expired
+ *  - Smooth ease-out slide-in from right
+ *  - Ease-in slide-out to right when expired
+ *  - Notifications stack upward (each new one pushes older ones up)
+ *
+ * Position: bottom-right corner, 8 px margin
  */
-public class NotificationRenderer implements Globals {
+public class NotificationRenderer implements Globals
+{
+    // ------------------------------------------------------------------ //
+    //  State
+    // ------------------------------------------------------------------ //
     private final List<NotificationItem> notifications =
             new CopyOnWriteArrayList<>();
     private final Notification module;
 
-    /* Layout constants */
-    private static final float BOX_PADDING_X = 8.0f;
-    private static final float BOX_PADDING_Y = 4.0f;
-    private static final float ACCENT_BAR_WIDTH = 3.0f;
-    private static final float MIN_BOX_WIDTH = 160.0f;
-    private static final float BOX_MARGIN_BOTTOM = 5.0f;
+    // ------------------------------------------------------------------ //
+    //  Layout constants
+    // ------------------------------------------------------------------ //
+    private static final float CORNER_RADIUS    = 3.0f;
+    private static final float ACCENT_W         = 3.0f;
+    private static final float PAD_X            = 8.0f;   // inside padding (after accent)
+    private static final float PAD_Y            = 5.0f;   // top/bottom inner padding
+    private static final float MIN_WIDTH        = 170.0f;
+    private static final float GAP_BETWEEN      = 4.0f;   // vertical gap between cards
+    private static final float SCREEN_MARGIN    = 8.0f;   // distance from screen edge
+    private static final float PROGRESS_H       = 3.0f;   // progress bar height
+    private static final float PROGRESS_RADIUS  = 1.5f;
+    private static final float LINE_GAP         = 2.0f;   // gap between title and message
 
-    public NotificationRenderer(Notification module) {
+    // ------------------------------------------------------------------ //
+    //  Constructor
+    // ------------------------------------------------------------------ //
+    public NotificationRenderer(Notification module)
+    {
         this.module = module;
     }
 
-    /* --- Public API --- */
+    // ------------------------------------------------------------------ //
+    //  Public API
+    // ------------------------------------------------------------------ //
 
-    public void show(NotificationType type, String message) {
+    public void show(NotificationType type, String message)
+    {
         if (mc.player == null || !module.isEnabled()) return;
 
-        int textHeight = Managers.TEXT.getStringHeightI();
-        float boxH = getBoxHeight(textHeight);
+        float boxH = getBoxHeight();
 
-        // Push existing notifications upward
-        for (NotificationItem n : notifications) {
-            n.targetY -= (boxH + BOX_MARGIN_BOTTOM);
+        // Push all existing notifications upward
+        for (NotificationItem n : notifications)
+        {
+            n.targetY -= (boxH + GAP_BETWEEN);
         }
 
         ScaledResolution sr = new ScaledResolution(mc);
         NotificationItem item =
                 new NotificationItem(type, message, module.time.getValue());
-        item.targetY  = sr.getScaledHeight() - boxH - 10;
-        item.currentY = sr.getScaledHeight() - boxH - 10;
+
+        float startY = sr.getScaledHeight() - boxH - SCREEN_MARGIN;
+        item.targetY  = startY;
+        item.currentY = startY;
         notifications.add(item);
     }
 
-    public void clear() {
+    public void clear()
+    {
         notifications.clear();
     }
 
-    /* --- Render (called each frame) --- */
+    // ------------------------------------------------------------------ //
+    //  Render entry-point (called each frame)
+    // ------------------------------------------------------------------ //
 
-    public void onRender2D() {
+    public void onRender2D()
+    {
         if (mc.player == null) return;
 
         ScaledResolution sr = new ScaledResolution(mc);
-        int screenW = sr.getScaledWidth();
-        int textH   = Managers.TEXT.getStringHeightI();
+        int sw = sr.getScaledWidth();
 
-        for (NotificationItem n : notifications) {
-            renderSingle(n, screenW, textH);
-            updateAnimation(n);
+        for (NotificationItem n : notifications)
+        {
+            tick(n);
+            renderCard(n, sw);
         }
 
-        // Remove finished notifications
-        notifications.removeIf(n ->
-                n.offsetX > 400.0f && n.ticksRemaining <= 0);
+        // Remove cards that have fully slid off screen
+        notifications.removeIf(n -> n.slidingOut && n.offsetX > 350.0f);
     }
 
-    /* --- Internals --- */
+    // ------------------------------------------------------------------ //
+    //  Per-frame tick: update animation state
+    // ------------------------------------------------------------------ //
 
-    private void renderSingle(NotificationItem n,
-                              int screenW, int textH) {
-        String title = n.type.getTitle();
-        int titleW   = Managers.TEXT.getStringWidth(title);
-        int msgW     = Managers.TEXT.getStringWidth(n.message);
+    private void tick(NotificationItem n)
+    {
+        int fps = Math.max(1, net.minecraft.client.Minecraft.getDebugFPS());
+        float lerpFactor = Math.min(1.0f, 12.0f / fps);  // ~12 px / frame at 60 fps
 
-        float contentW = Math.max(titleW, msgW);
-        float boxW = Math.max(contentW + BOX_PADDING_X * 2
-                              + ACCENT_BAR_WIDTH + 4, MIN_BOX_WIDTH);
-        float boxH = getBoxHeight(textH);
+        if (n.slidingIn)
+        {
+            // Ease-out slide in: offsetX -> 0
+            n.offsetX   = lerp(n.offsetX,  0.0f,  lerpFactor);
+            n.slideAlpha = lerp(n.slideAlpha, 1.0f, lerpFactor);
 
-        // Box position (right-aligned, offset by animation)
-        float x1 = screenW - boxW - 6 + n.offsetX;
+            if (n.offsetX < 0.5f)
+            {
+                n.offsetX    = 0.0f;
+                n.slideAlpha = 1.0f;
+                n.slidingIn  = false;
+            }
+        }
+        else if (!n.slidingOut)
+        {
+            // Countdown
+            n.ticksRemaining--;
+            if (n.ticksRemaining <= 0)
+            {
+                n.slidingOut = true;
+            }
+        }
+        else
+        {
+            // Ease-in slide out: offsetX -> large positive
+            n.offsetX    = lerp(n.offsetX, 400.0f, lerpFactor * 0.7f);
+            n.slideAlpha = lerp(n.slideAlpha, 0.0f, lerpFactor);
+        }
+
+        // Smooth Y stacking
+        n.currentY = lerp(n.currentY, n.targetY, lerpFactor);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Draw a single notification card
+    // ------------------------------------------------------------------ //
+
+    private void renderCard(NotificationItem n, int sw)
+    {
+        float textH = Managers.TEXT.getStringHeightI();
+        float boxH  = getBoxHeight();
+        float boxW  = getBoxWidth(n);
+
+        // Right-aligned; shift right by offsetX during animation
+        float x1 = sw - boxW - SCREEN_MARGIN + n.offsetX;
         float y1 = n.currentY;
-        float x2 = screenW - 6 + n.offsetX;
+        float x2 = sw       - SCREEN_MARGIN + n.offsetX;
         float y2 = y1 + boxH;
 
-        // -- Background --
-        Render2DUtil.drawRect(x1, y1, x2, y2,
-                n.type.getBackgroundColor());
+        GlStateManager.pushMatrix();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(
+                GlStateManager.SourceFactor.SRC_ALPHA,
+                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                GlStateManager.SourceFactor.ONE,
+                GlStateManager.DestFactor.ZERO);
 
-        // -- Left accent bar --
-        Render2DUtil.drawRect(x1, y1, x1 + ACCENT_BAR_WIDTH, y2,
-                n.type.getAccentColor());
+        int accent = n.type.getAccentColor();
+        int bg     = n.type.getBackgroundColor();
 
-        // -- Title text (bold-ish via shadow) --
-        float textX = x1 + ACCENT_BAR_WIDTH + 6;
-        float titleY = y1 + BOX_PADDING_Y;
+        // ---- Outer card shadow (subtle dark glow) ----
+        int shadow = 0x30000000;
+        Render2DUtil.roundedRect(x1 - 1, y1 - 1, x2 + 1, y2 + 1,
+                CORNER_RADIUS + 1, shadow);
+
+        // ---- Background (dark rounded rect) ----
+        Render2DUtil.roundedRect(x1, y1, x2, y2, CORNER_RADIUS, bg);
+
+        // ---- Left accent bar ----
+        // We draw a solid rect then clip it to the left edge of the card
+        float barX2 = x1 + ACCENT_W;
+        // Left side: draw with round corners only on the left
+        Render2DUtil.drawRect(x1, y1 + CORNER_RADIUS,
+                              barX2, y2 - CORNER_RADIUS, accent);
+        Render2DUtil.drawQuarterCircle(x1, y1 + CORNER_RADIUS,
+                CORNER_RADIUS - 0.2f, accent, 3);
+        Render2DUtil.drawQuarterCircle(x1, y2 - CORNER_RADIUS,
+                CORNER_RADIUS - 0.2f, accent, 4);
+        // Fill corners between bar and rounded bg
+        Render2DUtil.drawRect(barX2, y1, x2, y1 + CORNER_RADIUS, bg);
+        Render2DUtil.drawRect(barX2, y2 - CORNER_RADIUS, x2, y2, bg);
+
+        // ---- Thin separator between accent bar and content ----
+        Render2DUtil.drawRect(barX2, y1 + CORNER_RADIUS,
+                barX2 + 1, y2 - CORNER_RADIUS - PROGRESS_H - 1,
+                0x22FFFFFF);
+
+        // ---- Content area ----
+        float contentX = x1 + ACCENT_W + PAD_X;
+        float titleY   = y1 + PAD_Y;
+
+        // Icon (type accent color)
+        String icon = n.type.getIcon();
+        Managers.TEXT.drawStringWithShadow(icon, contentX, titleY, accent);
+        float iconW = Managers.TEXT.getStringWidth(icon) + 4;
+
+        // Title (white)
         Managers.TEXT.drawStringWithShadow(
-                title, textX, titleY, 0xFFFFFFFF);
+                n.type.getTitle(), contentX + iconW, titleY, 0xFFFFFFFF);
 
-        // -- Message text --
-        float msgY = titleY + textH + 2;
+        // Message (light grey, second line)
+        float msgY = titleY + textH + LINE_GAP;
         Managers.TEXT.drawStringWithShadow(
-                n.message, textX, msgY, 0xFFDDDDDD);
+                n.message, contentX, msgY, 0xFFCCCCCC);
 
-        // -- Progress bar at bottom --
-        float progress = n.ticksMax > 0
+        // ---- Progress bar ----
+        float progress  = n.ticksMax > 0
                 ? (n.ticksMax - n.ticksRemaining) / n.ticksMax
                 : 1.0f;
-        float barFullW = boxW;
-        float barW = barFullW * (1.0f - progress);
+        // remaining fraction (bar shrinks from right to left)
+        float remaining = 1.0f - progress;
 
-        // bar background (darker)
-        Render2DUtil.drawRect(x1, y2 - 2, x2, y2,
-                0x44000000);
-        // bar foreground
-        Render2DUtil.drawRect(x1, y2 - 2, x1 + barW, y2,
-                0xDDFFFFFF);
-    }
+        float barTop    = y2 - PROGRESS_H - 1;
+        float barBottom = y2 - 1;
+        float barLeft   = x1 + ACCENT_W + 1;
+        float barRight  = x2 - 1;
+        float barFull   = barRight - barLeft;
 
-    private void updateAnimation(NotificationItem n) {
-        if (n.ticksRemaining <= 0) {
-            // Slide out to the right
-            n.offsetX += (500.0f - n.offsetX) / 10.0f;
-        } else {
-            n.ticksRemaining--;
-            // Slide in from the right
-            n.offsetX += (0.0f - n.offsetX) / 4.0f;
-            // Smooth Y interpolation
-            n.currentY += (n.targetY - n.currentY) / 4.0f;
+        // Track
+        Render2DUtil.drawRect(barLeft, barTop, barRight, barBottom, 0x33FFFFFF);
+
+        // Fill (shrinks to the left)
+        if (remaining > 0.001f)
+        {
+            float fillRight = barLeft + barFull * remaining;
+            // Normal fill
+            Render2DUtil.drawGradientRect(
+                    barLeft, barTop, fillRight, barBottom,
+                    true,  // sideways gradient
+                    blendAlpha(accent, 0xFF),
+                    blendAlpha(accent, 0xBB));
         }
+
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
     }
 
-    private float getBoxHeight(int textH) {
-        // title + message + padding
-        return textH * 2 + BOX_PADDING_Y * 2 + 4;
+    // ------------------------------------------------------------------ //
+    //  Helpers
+    // ------------------------------------------------------------------ //
+
+    private float getBoxHeight()
+    {
+        float textH = Managers.TEXT.getStringHeightI();
+        // title line + message line + top/bottom padding + progress bar + line gap
+        return textH * 2 + PAD_Y * 2 + PROGRESS_H + LINE_GAP + 2;
+    }
+
+    private float getBoxWidth(NotificationItem n)
+    {
+        float iconW   = Managers.TEXT.getStringWidth(n.type.getIcon()) + 4;
+        float titleW  = Managers.TEXT.getStringWidth(n.type.getTitle()) + iconW;
+        float msgW    = Managers.TEXT.getStringWidth(n.message);
+        float contentW = Math.max(titleW, msgW);
+        return Math.max(contentW + ACCENT_W + PAD_X * 2 + 2, MIN_WIDTH);
+    }
+
+    /** Replace the alpha byte in an ARGB color. */
+    private static int blendAlpha(int argb, int alpha)
+    {
+        return (argb & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    }
+
+    private static float lerp(float a, float b, float t)
+    {
+        return a + (b - a) * t;
     }
 }
