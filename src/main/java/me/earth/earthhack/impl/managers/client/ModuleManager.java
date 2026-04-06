@@ -180,6 +180,9 @@ import me.earth.earthhack.impl.modules.render.weather.Weather;
 import me.earth.earthhack.impl.modules.render.xray.XRay;
 import me.earth.earthhack.impl.modules.render.pvpresources.PvpResources;
 import me.earth.earthhack.impl.modules.render.targethud.TargetHud;
+import me.earth.earthhack.impl.modules.render.crystalparticles.CrystalParticles;
+import me.earth.earthhack.impl.modules.render.offhandshake.OffhandShake;
+import me.earth.earthhack.impl.modules.render.oldanimation.OldAnimation;
 import me.earth.earthhack.vanilla.Environment;
 
 import java.util.ArrayList;
@@ -368,6 +371,9 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new Ambience());
         this.forceRegister(new PvpResources());
         this.forceRegister(new TargetHud());
+        this.forceRegister(new CrystalParticles());
+        this.forceRegister(new OffhandShake());
+        this.forceRegister(new OldAnimation());
 
         this.forceRegister(new PingBypassModule());
 
@@ -402,7 +408,9 @@ public class ModuleManager extends IterationRegister<Module>
     public ArrayList<Module> getModulesFromCategory(Category moduleCategory) {
         final ArrayList<Module> iModules = new ArrayList<>();
         for (Module iModule : getRegistered()) {
-            if (iModule.getCategory() == moduleCategory) iModules.add(iModule);
+            if (iModule.getCategory() == moduleCategory && iModule.isHidden() != me.earth.earthhack.api.module.util.Hidden.Hidden) {
+                iModules.add(iModule);
+            }
         }
         return iModules;
     }

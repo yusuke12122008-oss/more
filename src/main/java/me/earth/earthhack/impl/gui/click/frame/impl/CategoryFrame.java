@@ -26,6 +26,7 @@ public class CategoryFrame extends ModulesFrame {
         List<Module> moduleList = moduleManager.getModulesFromCategory(getModuleCategory());
         moduleList.sort(Comparator.comparing(Module::getName));
         for (Module module : moduleList) {
+            if (module == null || module.isHidden() == me.earth.earthhack.api.module.util.Hidden.Hidden) continue;
             getComponents().add(new ModuleComponent(module, getPosX(), getPosY(), 0, offsetY, getWidth(), 14));
             offsetY += 14;
         }
