@@ -471,27 +471,13 @@ public abstract class MixinMinecraft implements IMinecraft
         isEarthhackRunning = false;
     }
 
-    @Redirect(
-        method = "sendClickBlockToController",
-        at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/entity/EntityPlayerSP;isHandActive()Z"))
-    public boolean isHandActiveHook(EntityPlayerSP playerSP)
-    {
-        return playerSP.isHandActive();
-    }
-
-    @Redirect(
-        method = "rightClickMouse",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/multiplayer/PlayerControllerMP;" +
-                     "getIsHittingBlock()Z",
-            ordinal = 0),
-        require = 1)
-    public boolean isHittingBlockHook(PlayerControllerMP playerControllerMP)
-    {
-        return playerControllerMP.getIsHittingBlock();
-    }
+    // isHandActiveHook and isHittingBlockHook were plain pass-through @Redirects
+    // that conflicted with Vonware's MixinMinecraft (priority 1000).
+    // Because 3arthh4ck's mixin config sets priority = Integer.MAX_VALUE - 2,
+    // it claimed these injection points first, causing Vonware's required
+    // @Redirect to fail with InjectionError (0/1 succeeded) and crash the game.
+    // Both hooks did nothing beyond calling the original method, so they are
+    // safe to remove entirely.  Vonware's redirectors will now apply normally.
 
     @Inject(
         method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;"
