@@ -10,7 +10,9 @@ import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.Confirmer;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.*;
 
+import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.combat.offhand.Offhand;
+import me.earth.earthhack.impl.modules.combat.offhand.modes.OffhandMode;
 
 import me.earth.earthhack.impl.util.helpers.Finishable;
 import me.earth.earthhack.impl.util.helpers.blocks.modes.Rotate;
@@ -1043,9 +1045,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                         module.newVer
                                                               .getValue());
 
-        // Check LegSwitch again theres some time passing during calc
-        if (LEG_SWITCH.returnIfPresent(LegSwitch::isActive, false)
-                || ANTISURROUND.returnIfPresent(AntiSurround::isActive, false))
+        if (false)
         {
             return true;
         }

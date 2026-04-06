@@ -16,10 +16,6 @@ public abstract class MixinRender
         cancellable = true)
     public void doRenderShadowAndFireHook(CallbackInfo info)
     {
-        if (ESP.isRendering)
-        {
-            info.cancel();
-        }
     }
 
     @Inject(
@@ -28,10 +24,6 @@ public abstract class MixinRender
         cancellable = true)
     public void renderLivingLabelHook(CallbackInfo info)
     {
-        if (ESP.isRendering)
-        {
-            info.cancel();
-        }
     }
 
 }

@@ -459,7 +459,7 @@ public class Offhand extends Module
 
     public void postWindowClick()
     {
-        AUTO_ARMOR.computeIfPresent(AutoArmor::resetTimer);
+
         timer.reset();
 
         if (cancelActions.getValue())

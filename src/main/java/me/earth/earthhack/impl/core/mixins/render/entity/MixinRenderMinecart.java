@@ -16,10 +16,6 @@ public abstract class MixinRenderMinecart
         cancellable = true)
     public void renderCartContentsHook(CallbackInfo info)
     {
-        if (ESP.isRendering)
-        {
-            info.cancel();
-        }
     }
 
 }

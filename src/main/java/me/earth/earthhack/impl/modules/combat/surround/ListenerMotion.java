@@ -132,11 +132,7 @@ final class ListenerMotion extends ModuleListener<Surround, MotionUpdateEvent>
                 event.setYaw(module.rotations[0]);
                 event.setPitch(module.rotations[1]);
 
-                if (Surround.FREECAM.isEnabled())
-                {
-                    Surround.FREECAM.get().rotate(module.rotations[0],
-                                                  module.rotations[1]);
-                }
+
             }
         }
         else if (module.setPosition)

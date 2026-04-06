@@ -8,7 +8,7 @@ import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.impl.event.events.render.CrosshairEvent;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.hud.HUD;
-import me.earth.earthhack.impl.modules.client.hud.modes.Potions;
+
 
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.ScaledResolution;
@@ -29,18 +29,6 @@ public abstract class MixinGuiIngame
 
 
 
-    @Inject(
-        method = "renderPotionEffects",
-        at = @At("HEAD"),
-        cancellable = true)
-    protected void renderPotionEffectsHook(ScaledResolution scaledRes,
-                                           CallbackInfo info)
-    {
-        if (POTS.getValue() == Potions.Hide || POTS.getValue() == Potions.Text)
-        {
-            info.cancel();
-        }
-    }
 
     @Inject(
             method = "renderAttackIndicator",

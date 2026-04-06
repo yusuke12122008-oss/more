@@ -307,12 +307,10 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
                                      RayTraceResult movingObjectPositionIn,
                                      int execute,
                                      float partialTicks) {
-        if (!BLOCK_HIGHLIGHT.isEnabled()) {
-            renderGlobal.drawSelectionBox(player,
-                    movingObjectPositionIn,
-                    execute,
-                    partialTicks);
-        }
+        renderGlobal.drawSelectionBox(player,
+                movingObjectPositionIn,
+                execute,
+                partialTicks);
     }
 
     @Inject(
@@ -331,88 +329,6 @@ public abstract class MixinEntityRenderer implements IEntityRenderer {
     private RayTraceResult getMouseOverHook(Entity entity,
                                             double blockReachDistance,
                                             float partialTicks) {
-        if (RAYTRACE.returnIfPresent(RayTrace::isActive, false)) {
-            Vec3d start = entity.getPositionEyes(partialTicks);
-            Vec3d look = entity.getLook(partialTicks);
-            Vec3d end = start.add(look.x * blockReachDistance,
-                    look.y * blockReachDistance,
-                    look.z * blockReachDistance);
-            // TODO: make this better!
-            if (RAYTRACE.returnIfPresent(RayTrace::liquidCrystalPlace, false)
-                    && (mc.player.isInsideOfMaterial(Material.WATER)
-                    || mc.player.isInsideOfMaterial(Material.LAVA))
-                    && InventoryUtil.isHolding(Blocks.OBSIDIAN))
-            {
-                MutableWrapper<BlockPos> opposite = new MutableWrapper<>();
-                RayTraceResult result = traceInLiquid(start, end, opposite, true);
-                if (result != null
-                        && result.typeOfHit == RayTraceResult.Type.BLOCK) {
-                    if (result.getBlockPos().equals(opposite.get())) {
-                        result.sideHit = result.sideHit.getOpposite();
-                    }
-
-                    return result;
-                }
-                else
-                {
-                    result = traceInLiquid(start, end, opposite, false);
-                    if (result != null
-                            && result.typeOfHit == RayTraceResult.Type.BLOCK)
-                    {
-                        if (result.getBlockPos().equals(opposite.get()))
-                        {
-                            result.sideHit = result.sideHit.getOpposite();
-                        }
-
-                        return result;
-                    }
-                }
-            }
-
-            if (RAYTRACE.returnIfPresent(RayTrace::phaseCheck, false)) {
-                // TODO: trace to first Air Block!
-                return RayTracer.traceTri(
-                        mc.world, mc.world, start, end, false, false, true,
-                        (b, p, ef) ->
-                        {
-                            AxisAlignedBB bb =
-                                    mc.world
-                                      .getBlockState(p)
-                                      .getBoundingBox(mc.world, p)
-                                      .offset(p);
-
-                            if (RotationUtil.getRotationPlayer()
-                                    .getEntityBoundingBox()
-                                    .intersects(bb)
-                                    && p.getY() > mc.player.posY + 0.25)
-                            {
-                                return false;
-                            }
-
-                            if (ef == null) {
-                                return true;
-                            }
-
-                            for (Entity e : mc.world.getEntitiesWithinAABB(
-                                    Entity.class, new AxisAlignedBB(p.offset(ef))))
-                            {
-                                if (e == null
-                                        || e.isDead
-                                        || mc.player.equals(e)
-                                        || RotationUtil.getRotationPlayer()
-                                        .equals(e))
-                                {
-                                    continue;
-                                }
-
-                                return false;
-                            }
-
-                            return true;
-                        });
-            }
-        }
-
         return entity.rayTrace(blockReachDistance, partialTicks);
     }
 

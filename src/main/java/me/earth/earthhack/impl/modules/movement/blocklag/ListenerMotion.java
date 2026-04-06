@@ -62,17 +62,7 @@ final class ListenerMotion extends ModuleListener<BlockLag, MotionUpdateEvent> {
         }
 
         EntityPlayer rEntity = mc.player;
-        if (BlockLag.FREECAM.isEnabled()) {
-            if (!module.freecam.getValue()) {
-                module.disable();
-                return;
-            }
 
-            rEntity = BlockLag.FREECAM.get().getPlayer();
-            if (rEntity == null) {
-                rEntity = mc.player;
-            }
-        }
 
         BlockPos pos = PositionUtil.getPosition(rEntity);
         if (!mc.world.getBlockState(pos).getMaterial().isReplaceable()) {

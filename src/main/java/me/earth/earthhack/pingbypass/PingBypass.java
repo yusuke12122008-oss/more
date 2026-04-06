@@ -129,7 +129,6 @@ public class PingBypass implements Globals {
     public static void setConnected(boolean connected) {
         PingBypass.connected = connected;
         if (connected) {
-            RECONNECT.get().setConnected(true);
         } else {
             PingBypass.networkManager = null;
             mc.addScheduledTask(() -> {

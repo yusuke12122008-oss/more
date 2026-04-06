@@ -34,19 +34,7 @@ public abstract class MixinLayerArmorBase {
         Bus.EVENT_BUS.post(pre);
         if (!pre.isCancelled())
         {
-            if (CHAMS.get().shouldArmorChams() && CHAMS.isEnabled()) {
-                Color color = CHAMS.get().getArmorVisibleColor(entityIn);
-                glPushMatrix();
-                GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-                GL11.glPolygonOffset(1.0F, -2000000F);
-                glColor4f(color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, color.getAlpha() / 255.0f);
-            }
             pre.getModel().render(entityIn, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
-            if (CHAMS.get().shouldArmorChams() && CHAMS.isEnabled()) {
-                GL11.glPolygonOffset(1.0F, 2000000F);
-                GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-                glPopMatrix();
-            }
         }
 
         RenderArmorEvent post = new RenderArmorEvent.Post(entityIn, modelBase, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);

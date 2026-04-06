@@ -16,7 +16,7 @@ import me.earth.earthhack.impl.event.events.movement.OnGroundEvent;
 import me.earth.earthhack.impl.event.events.movement.StepEvent;
 import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.management.Management;
-import me.earth.earthhack.impl.modules.movement.velocity.Velocity;
+
 import me.earth.earthhack.impl.util.math.StopWatch;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityType;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -48,7 +48,6 @@ public abstract class MixinEntity implements IEntity, Globals
         Caches.getSetting(Management.class, Setting.class, "DeathTime", 500);
 
     @Shadow
-    public double posX;
     @Shadow
     public double posY;
     @Shadow
@@ -346,9 +345,7 @@ public abstract class MixinEntity implements IEntity, Globals
             target = "Lnet/minecraft/entity/Entity;addVelocity(DDD)V"))
     public void addVelocityHook(Entity entity, double x, double y, double z)
     {
-        if (entity != null && (!VELOCITY.isEnabled()
-                                || !NO_PUSH.getValue()
-                                || !entity.equals(mc.player)))
+        if (entity != null && !entity.equals(mc.player))
         {
             entity.addVelocity(x, y, z);
         }

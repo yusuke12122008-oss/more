@@ -9,6 +9,7 @@ import me.earth.earthhack.impl.core.ducks.network.ICPacketPlayerDigging;
 import me.earth.earthhack.impl.event.listeners.SendListener;
 
 import me.earth.earthhack.pingbypass.PingBypass;
+import me.earth.earthhack.impl.modules.client.pingbypass.PingBypassModule;
 import net.minecraft.network.play.client.CPacketPlayerDigging;
 
 public class ClientDiggingService extends SubscriberImpl {
