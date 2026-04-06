@@ -125,7 +125,7 @@ public class ChatManager extends SubscriberImpl implements Globals
         return -1;
     }
 
-    // TODO: THIS IS GARBAGÉ
+    // TODO: THIS IS GARBAGE
     public void replace(ITextComponent component,
                         String uniqueWord,
                         int senderID,

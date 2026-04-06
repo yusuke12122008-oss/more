@@ -187,7 +187,7 @@ public class RayTraceFactory implements Globals
                 double staZ = Math.min(minZ, maxZ) + (zEq ? 0 : 0.0005);
 
                 // I mean instead of using a Set we could just think
-                // about which 5 vectors are unique but ¯\_(ツ)_/¯
+                // about which 5 vectors are unique but \_(-)_/
                 Set<Vec3d> vectors = new HashSet<>();
                 vectors.add(new Vec3d(staX, staY, staZ));
                 vectors.add(new Vec3d(staX, staY, endZ));
