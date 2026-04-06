@@ -69,13 +69,9 @@ public class NotificationRenderer implements Globals
         this.module = module;
     }
 
-<<<<<<< HEAD
-    /* --- Public API --- */
-=======
     // ------------------------------------------------------------------ //
     //  Public API
     // ------------------------------------------------------------------ //
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
 
     public void show(NotificationType type, String message)
     {
@@ -104,13 +100,9 @@ public class NotificationRenderer implements Globals
         notifications.clear();
     }
 
-<<<<<<< HEAD
-    /* --- Render (called each frame) --- */
-=======
     // ------------------------------------------------------------------ //
     //  Render entry-point (called each frame)
     // ------------------------------------------------------------------ //
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
 
     public void onRender2D()
     {
@@ -129,13 +121,9 @@ public class NotificationRenderer implements Globals
         notifications.removeIf(n -> n.slidingOut && n.offsetX > 350.0f);
     }
 
-<<<<<<< HEAD
-    /* --- Internals --- */
-=======
     // ------------------------------------------------------------------ //
     //  Per-frame tick: update animation state
     // ------------------------------------------------------------------ //
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
 
     private void tick(NotificationItem n)
     {
@@ -191,19 +179,6 @@ public class NotificationRenderer implements Globals
         float x2 = sw       - SCREEN_MARGIN + n.offsetX;
         float y2 = y1 + boxH;
 
-<<<<<<< HEAD
-        // -- Background --
-        Render2DUtil.drawRect(x1, y1, x2, y2,
-                n.type.getBackgroundColor());
-
-        // -- Left accent bar --
-        Render2DUtil.drawRect(x1, y1, x1 + ACCENT_BAR_WIDTH, y2,
-                n.type.getAccentColor());
-
-        // -- Title text (bold-ish via shadow) --
-        float textX = x1 + ACCENT_BAR_WIDTH + 6;
-        float titleY = y1 + BOX_PADDING_Y;
-=======
         GlStateManager.pushMatrix();
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(
@@ -252,27 +227,16 @@ public class NotificationRenderer implements Globals
         float iconW = Managers.TEXT.getStringWidth(icon) + 4;
 
         // Title (white)
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
         Managers.TEXT.drawStringWithShadow(
                 n.type.getTitle(), contentX + iconW, titleY, 0xFFFFFFFF);
 
-<<<<<<< HEAD
-        // -- Message text --
-        float msgY = titleY + textH + 2;
-=======
         // Message (light grey, second line)
         float msgY = titleY + textH + LINE_GAP;
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
         Managers.TEXT.drawStringWithShadow(
                 n.message, contentX, msgY, 0xFFCCCCCC);
 
-<<<<<<< HEAD
-        // -- Progress bar at bottom --
-        float progress = n.ticksMax > 0
-=======
         // ---- Progress bar ----
         float progress  = n.ticksMax > 0
->>>>>>> 471e7719ef297af2aa456053751136ecc17045be
                 ? (n.ticksMax - n.ticksRemaining) / n.ticksMax
                 : 1.0f;
         // remaining fraction (bar shrinks from right to left)
