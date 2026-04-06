@@ -79,7 +79,7 @@ public class Notification extends Module {
         return INSTANCE;
     }
 
-    /* ─── Static convenience methods for other modules ─── */
+    /* --- Static convenience methods for other modules --- */
 
     /** Show an INFO notification from anywhere. */
     public static void info(String message) {
