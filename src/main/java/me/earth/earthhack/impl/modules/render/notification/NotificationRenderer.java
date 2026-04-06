@@ -29,7 +29,7 @@ public class NotificationRenderer implements Globals {
         this.module = module;
     }
 
-    /* ─── Public API ─── */
+    /* --- Public API --- */
 
     public void show(NotificationType type, String message) {
         if (mc.player == null || !module.isEnabled()) return;
@@ -54,7 +54,7 @@ public class NotificationRenderer implements Globals {
         notifications.clear();
     }
 
-    /* ─── Render (called each frame) ─── */
+    /* --- Render (called each frame) --- */
 
     public void onRender2D() {
         if (mc.player == null) return;
@@ -73,7 +73,7 @@ public class NotificationRenderer implements Globals {
                 n.offsetX > 400.0f && n.ticksRemaining <= 0);
     }
 
-    /* ─── Internals ─── */
+    /* --- Internals --- */
 
     private void renderSingle(NotificationItem n,
                               int screenW, int textH) {
@@ -92,26 +92,26 @@ public class NotificationRenderer implements Globals {
         float x2 = screenW - 6 + n.offsetX;
         float y2 = y1 + boxH;
 
-        // ── Background ──
+        // -- Background --
         Render2DUtil.drawRect(x1, y1, x2, y2,
                 n.type.getBackgroundColor());
 
-        // ── Left accent bar ──
+        // -- Left accent bar --
         Render2DUtil.drawRect(x1, y1, x1 + ACCENT_BAR_WIDTH, y2,
                 n.type.getAccentColor());
 
-        // ── Title text (bold-ish via shadow) ──
+        // -- Title text (bold-ish via shadow) --
         float textX = x1 + ACCENT_BAR_WIDTH + 6;
         float titleY = y1 + BOX_PADDING_Y;
         Managers.TEXT.drawStringWithShadow(
                 title, textX, titleY, 0xFFFFFFFF);
 
-        // ── Message text ──
+        // -- Message text --
         float msgY = titleY + textH + 2;
         Managers.TEXT.drawStringWithShadow(
                 n.message, textX, msgY, 0xFFDDDDDD);
 
-        // ── Progress bar at bottom ──
+        // -- Progress bar at bottom --
         float progress = n.ticksMax > 0
                 ? (n.ticksMax - n.ticksRemaining) / n.ticksMax
                 : 1.0f;

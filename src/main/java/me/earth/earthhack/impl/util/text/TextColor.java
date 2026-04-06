@@ -230,7 +230,7 @@ public enum TextColor
         }
     };
 
-    /** The '§' char every color code starts with. */
+    /** The section sign char every color code starts with. */
     public static final char SECTIONSIGN  = '\u00A7';
     /** $ + 0 */
     public static final String BLACK        = SECTIONSIGN + "0";

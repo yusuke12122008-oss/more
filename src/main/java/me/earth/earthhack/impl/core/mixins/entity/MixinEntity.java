@@ -48,6 +48,7 @@ public abstract class MixinEntity implements IEntity, Globals
         Caches.getSetting(Management.class, Setting.class, "DeathTime", 500);
 
     @Shadow
+    public double posX;
     @Shadow
     public double posY;
     @Shadow
