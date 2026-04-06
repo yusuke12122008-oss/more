@@ -180,6 +180,7 @@ import me.earth.earthhack.impl.modules.render.weather.Weather;
 import me.earth.earthhack.impl.modules.render.xray.XRay;
 import me.earth.earthhack.impl.modules.render.pvpresources.PvpResources;
 import me.earth.earthhack.impl.modules.render.targethud.TargetHud;
+import me.earth.earthhack.impl.modules.render.notification.Notification;
 import me.earth.earthhack.impl.modules.render.crystalparticles.CrystalParticles;
 import me.earth.earthhack.impl.modules.render.offhandshake.OffhandShake;
 import me.earth.earthhack.impl.modules.render.oldanimation.OldAnimation;
@@ -374,6 +375,7 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new CrystalParticles());
         this.forceRegister(new OffhandShake());
         this.forceRegister(new OldAnimation());
+        this.forceRegister(new Notification());
 
         this.forceRegister(new PingBypassModule());
 
