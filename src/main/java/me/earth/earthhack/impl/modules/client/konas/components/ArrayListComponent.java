@@ -47,8 +47,8 @@ public class ArrayListComponent extends HudComponent
         final int fps = Math.max(1, Minecraft.getDebugFPS());
 
         // Gather enabled modules sorted by display-name length (longest first)
-        List<Module> enabled = Managers.MODULE
-                .getModules()
+        List<Module> enabled = Managers.MODULES
+                .getRegistered()
                 .stream()
                 .filter(m -> m.isEnabled() && m.isHidden() != Hidden.Hidden)
                 .sorted(Comparator.comparingInt(

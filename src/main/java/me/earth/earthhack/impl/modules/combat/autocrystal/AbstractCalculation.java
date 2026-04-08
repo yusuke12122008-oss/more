@@ -51,7 +51,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
             Caches.getModule(Offhand.class);
 
     protected final Set<BlockPos> blackList;
-    protected final List<Entity> entities; // maybe filter these by distance?
+    protected final List<Entity> entities;
     protected final AutoCrystal module;
     protected final List<EntityPlayer> raw;
 
@@ -124,7 +124,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
         {
             if (module.clearPost.getValue())
             {
-                // hmm, this could cause us to not get anything done
                 module.post.clear();
             }
 
@@ -200,12 +199,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                    blackList,
                                                    maxY);
 
-            // Check LegSwitch again theres some time passing during calc
-            if (false)
-            {
-                return;
-            }
-
             if (place(placeData))
             {
                 boolean passed = module.obbyCalcTimer
@@ -240,15 +233,9 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                  .calculate(module.placeHelper,
                                                             placeData,
                                                             friends,
-                                                         all,
+                                                            all,
                                                             module.minDamage
                                                                   .getValue());
-
-                    // Check LegSwitch again some time passed during calc
-                    if (false)
-                    {
-                        return;
-                    }
 
                     boolean attackingBefore = attacking;
                     if (placeNoAntiTotem(liquidData, mineSlots)
@@ -287,7 +274,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
 
     protected boolean evaluate(BreakData<T> breakData)
     {
-        // count = breakData.getData().size();
         boolean shouldDanger = module.shouldDanger();
         boolean slowReset = !shouldDanger;
         BreakValidity validity;
@@ -371,14 +357,49 @@ public abstract class AbstractCalculation<T extends CrystalData>
         return rotating && !module.rotate.getValue().noRotate(ACRotate.Place);
     }
 
+    // =====================================================================
+    // breakCheck() — スワップ遅延 & RTT ベース動的ディレイを追加
+    // =====================================================================
     protected boolean breakCheck()
     {
-        return module.attack.getValue()
-                && !noBreak
-                && Managers.SWITCH.getLastSwitch() >= module.cooldown.getValue()
-                && module.breakTimer.passed(module.breakDelay.getValue());
+        // 1. 既存のチェック
+        if (!module.attack.getValue()
+                || noBreak
+                || Managers.SWITCH.getLastSwitch() < module.cooldown.getValue())
+        {
+            return false;
+        }
+
+        // 2. [NEW] スワップタイマーチェック
+        //    swapDelay > 0 のとき、最後のスロット変更から swapDelay ms 未満なら攻撃を保留する
+        if (module.swapDelay.getValue() > 0
+                && !module.swapStateTracker.hasPassedDelay(
+                        module.swapDelay.getValue()))
+        {
+            return false;
+        }
+
+        // 3. [NEW] RTT ベース動的ディレイ
+        //    await が有効かつサンプルが存在する場合、直近攻撃の平均往復時間を基準に
+        //    yieldProtection ms を上乗せしたディレイを適用する
+        if (module.await.getValue() && module.rttTracker.hasSamples())
+        {
+            long dynamicDelay = module.rttTracker.getAverageRTT()
+                    + module.yieldProtection.getValue();
+            if (!module.breakTimer.passed((int) dynamicDelay))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // 4. 通常のブレークディレイ
+        return module.breakTimer.passed(module.breakDelay.getValue());
     }
 
+    // =====================================================================
+    // placeCheck() — Full モードのスワップ待ち追加
+    // =====================================================================
     protected boolean placeCheck()
     {
         if (module.sequentialHelper.isBlockingPlacement())
@@ -389,16 +410,24 @@ public abstract class AbstractCalculation<T extends CrystalData>
         if (module.damageSync.getValue())
         {
             Confirmer c = module.damageSyncHelper.getConfirmer();
-            if (c.isValid() // This is mostly to confirm place/break
+            if (c.isValid()
                 && !(c.isPlaceConfirmed(module.placeConfirm.getValue())
                     && c.isBreakConfirmed(module.breakConfirm.getValue())))
             {
-                // Could've been set to not valid
                 if (c.isValid() && module.preSynCheck.getValue())
                 {
                     return false;
                 }
             }
+        }
+
+        // [NEW] swapWaitFull が有効なとき、スワップ直後は配置もブロックする
+        if (module.swapWaitFull.getValue()
+                && module.swapDelay.getValue() > 0
+                && !module.swapStateTracker.hasPassedDelay(
+                        module.swapDelay.getValue()))
+        {
+            return false;
         }
 
         return count < module.multiPlace.getValue()
@@ -460,7 +489,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
     protected void setFriendsAndEnemies()
     {
         if (module.isSuicideModule()) {
-            // in case it gets modified
             //noinspection ArraysAsListWithZeroOrOneArgument
             this.enemies = new ArrayList<>(
                 Arrays.asList(RotationUtil.getRotationPlayer()));
@@ -479,13 +507,18 @@ public abstract class AbstractCalculation<T extends CrystalData>
                 || DamageUtil.cacheLowestDura(p) && module.antiNaked.getValue(),
             Managers.FRIENDS::contains,
             Managers.ENEMIES::contains);
-        // split.get(0) are the invalid players.
         this.friends = split.get(1);
         this.enemies = split.get(2);
         this.players = split.get(3);
         this.all = new ArrayList<>(enemies.size() + players.size());
-        shieldRange += enemies.stream().peek(e -> all.add(e)).filter(e -> e.getDistanceSq(mc.player) <= MathUtil.square(module.shieldRange.getValue())).count();
-        shieldRange += players.stream().peek(e -> all.add(e)).filter(e -> e.getDistanceSq(mc.player) <= MathUtil.square(module.shieldRange.getValue())).count();
+        shieldRange += enemies.stream().peek(e -> all.add(e))
+            .filter(e -> e.getDistanceSq(mc.player)
+                    <= MathUtil.square(module.shieldRange.getValue()))
+            .count();
+        shieldRange += players.stream().peek(e -> all.add(e))
+            .filter(e -> e.getDistanceSq(mc.player)
+                    <= MathUtil.square(module.shieldRange.getValue()))
+            .count();
         if (module.yCalc.getValue())
         {
             maxY = Double.MIN_VALUE;
@@ -499,19 +532,12 @@ public abstract class AbstractCalculation<T extends CrystalData>
         }
     }
 
+    // =====================================================================
+    // attack() — RTT トラッカーへの通知を追加
+    // =====================================================================
     protected boolean attack(Entity entity,
                              BreakValidity validity)
     {
-        /*if (first TODO: something like this, when we want
-                     to autoswitch but position is blocked.
-            && !module.attackMode.getValue().shouldAttack()
-            && module.autoSwitch.getValue() != AutoSwitch.Always
-            && !module.switching)
-        {
-            ifBlocked = () -> attack(entity, validity, false);
-            return false;
-        }*/
-
         if (module.basePlaceOnly.getValue())
         {
             return validity != BreakValidity.INVALID;
@@ -552,6 +578,9 @@ public abstract class AbstractCalculation<T extends CrystalData>
 
                 mc.player.connection.sendPacket(new CPacketUseEntity(entity));
 
+                // [NEW] RTT トラッキング: パケット送信後すぐにエンティティIDを記録
+                module.rttTracker.onAttackSent(entity.getEntityId());
+
                 if (module.pseudoSetDead.getValue())
                 {
                     ((IEntity) entity).setPseudoDead(true);
@@ -576,6 +605,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                     new MutableWrapper<>(true));
                 }
                 return true;
+
             case ROTATIONS:
                 attacking = true;
                 rotating = true;
@@ -602,6 +632,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
                 }
 
                 return true;
+
             case INVALID:
             default:
                 return false;
@@ -664,7 +695,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
                         BlockPos up = positionData.getPos().up();
                         double y = module.newVerEntities.getValue() ? 1.0 : 2.0;
                         if (entity.getEntityBoundingBox().intersects(
-                            // double check this sometime
                             new AxisAlignedBB(up.getX(),
                                               up.getY(),
                                               up.getZ(),
@@ -750,7 +780,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
                 && module.antiTotem.getValue()
                 && module.forceTimer.passed(module.attempts.getValue()))
         {
-            // TODO: Could find the best ForceData by Player
             for (Map.Entry<EntityPlayer, ForceData> entry :
                                                 data.getForceData().entrySet())
             {
@@ -985,6 +1014,9 @@ public abstract class AbstractCalculation<T extends CrystalData>
             module.setRenderPos(pos, data.getMaxDamage());
         }
 
+        // [NEW] ポジションキャッシュに pending として登録
+        module.positionCache.pendingPlace(pos);
+
         MutableWrapper<Boolean> hasPlaced = new MutableWrapper<>(false);
         if (!InventoryUtil.isHolding(Items.END_CRYSTAL)) {
             if (module.autoSwitch.getValue() == AutoSwitch.Always
@@ -1044,11 +1076,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
                                                         data.getTarget(),
                                                         module.newVer
                                                               .getValue());
-
-        if (false)
-        {
-            return true;
-        }
 
         module.obbyCalcTimer.reset();
         if (bestData != null
@@ -1114,7 +1141,8 @@ public abstract class AbstractCalculation<T extends CrystalData>
     protected boolean placeCheckPre(BlockPos pos)
     {
         double x = Managers.POSITION.getX();
-        double y = Managers.POSITION.getY() + (module.placeRangeEyes.getValue() ? RotationUtil.getRotationPlayer().getEyeHeight() : 0);
+        double y = Managers.POSITION.getY() + (module.placeRangeEyes.getValue()
+                ? RotationUtil.getRotationPlayer().getEyeHeight() : 0);
         double z = Managers.POSITION.getZ();
 
         if ((module.placeRangeCenter.getValue()
@@ -1159,7 +1187,6 @@ public abstract class AbstractCalculation<T extends CrystalData>
 
             if (result != null && !result.getBlockPos().equals(pos))
             {
-                // TODO: what even is this?
                 //noinspection deprecation
                 return module.ignoreNonFull.getValue()
                     && !mc.world.getBlockState(result.getBlockPos())
@@ -1350,7 +1377,9 @@ public abstract class AbstractCalculation<T extends CrystalData>
                     focusData.getData().add(data);
                 }
 
-                Optional<T> first = focusData.getData().stream().filter(d -> !EntityUtil.isDead(d.getCrystal())).findFirst();
+                Optional<T> first = focusData.getData().stream()
+                    .filter(d -> !EntityUtil.isDead(d.getCrystal()))
+                    .findFirst();
                 if (!first.isPresent())
                 {
                     module.focus = null;

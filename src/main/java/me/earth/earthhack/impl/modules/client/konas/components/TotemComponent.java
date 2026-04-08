@@ -55,7 +55,7 @@ public class TotemComponent extends HudComponent
         // Item icon
         RenderHelper.enableGUIStandardItemLighting();
         GlStateManager.disableDepth();
-        mc.getRenderItem().renderItemIntoGUI(mc.player,
+        mc.getRenderItem().renderItemAndEffectIntoGUI(
                 new ItemStack(Items.TOTEM_OF_UNDYING), cx, cy);
         mc.getRenderItem().renderItemOverlays(mc.fontRenderer,
                 new ItemStack(Items.TOTEM_OF_UNDYING), cx, cy);

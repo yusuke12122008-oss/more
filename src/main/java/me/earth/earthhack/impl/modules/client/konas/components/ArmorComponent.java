@@ -64,7 +64,7 @@ public class ArmorComponent extends HudComponent
         for (ItemStack stack : pieces)
         {
             // Item icon
-            mc.getRenderItem().renderItemIntoGUI(mc.player, stack, x, y);
+            mc.getRenderItem().renderItemAndEffectIntoGUI(stack, x, y);
             mc.getRenderItem().renderItemOverlays(mc.fontRenderer, stack, x, y);
 
             // Durability fraction
