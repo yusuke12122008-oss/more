@@ -983,13 +983,13 @@ public class AutoCrystal extends Module
         // --- リスナー登録 ---
         register(new ListenerGameLoop(this));
         register(new ListenerMotion(this));
-        register(new ListenerEntity(this));
+        this.listeners.addAll(new ListenerEntity(this).getListeners());
         register(new ListenerSpawn(this));
         register(new ListenerDestroyEntities(this));
         register(new ListenerExplosion(this));
         register(new ListenerBlockChange(this));
         register(new ListenerBlockMulti(this));
-        register(new ListenerCPlayers(this));
+        this.listeners.addAll(new ListenerCPlayers(this).getListeners());
         register(new ListenerDestroyBlock(this));
         // [NEW] スワップパケット監視リスナー
         register(new ListenerPacketSendSwap(this));
