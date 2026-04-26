@@ -29,7 +29,7 @@ public class CalculationMotion extends AbstractCalculation<CrystalDataMotion>
     @Override
     protected IBreakHelper<CrystalDataMotion> getBreakHelper()
     {
-        return module.breakMotionHelper;
+        return module.breakHelperMotion;
     }
 
     @Override
