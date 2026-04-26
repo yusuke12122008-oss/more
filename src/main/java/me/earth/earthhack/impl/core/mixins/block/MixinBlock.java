@@ -1,9 +1,8 @@
 package me.earth.earthhack.impl.core.mixins.block;
 
-import me.earth.earthhack.api.cache.ModuleCache;
+import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.impl.core.ducks.block.IBlock;
 import me.earth.earthhack.impl.event.events.misc.CollisionEvent;
-import me.earth.earthhack.impl.modules.Caches;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
@@ -15,6 +14,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,7 +22,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,7 +29,6 @@ import java.util.List;
 @Mixin(Block.class)
 public abstract class MixinBlock implements IBlock
 {
-
     private static final Minecraft MC = Minecraft.getMinecraft();
 
     private final String[] harvestToolNonForge = new String[16];
@@ -56,7 +54,7 @@ public abstract class MixinBlock implements IBlock
     @Shadow
     public abstract int getMetaFromState(IBlockState state);
 
-    @Unique // TODO: test and use everywhere
+    @Unique
     @Override
     public void setHarvestLevelNonForge(String toolClass, int level)
     {
@@ -86,18 +84,52 @@ public abstract class MixinBlock implements IBlock
         method = "<init>(Lnet/minecraft/block/material/Material;Lnet/minecraft/block/material/MapColor;)V",
         at = @At("RETURN"))
     public void ctrHook(Material blockMaterialIn,
-                         MapColor blockMapColorIn,
-                         CallbackInfo ci)
+                        MapColor blockMapColorIn,
+                        CallbackInfo ci)
     {
         Arrays.fill(harvestLevelNonForge, -1);
     }
 
+    /**
+     * Lets modules replace or remove a block's collision box.
+     *
+     * AutoFeetTrap uses this to create temporary collision for positions
+     * that have been packet-placed but are not confirmed by the client world yet.
+     */
+    @Inject(
+        method = "addCollisionBoxToList",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    public void addCollisionBoxToListHook(IBlockState state,
+                                          World worldIn,
+                                          BlockPos pos,
+                                          AxisAlignedBB entityBox,
+                                          List<AxisAlignedBB> collidingBoxes,
+                                          Entity entityIn,
+                                          boolean isActualState,
+                                          CallbackInfo ci)
+    {
+        AxisAlignedBB bb = state.getCollisionBoundingBox(worldIn, pos);
 
+        CollisionEvent event =
+            new CollisionEvent(pos, bb, entityIn, (Block) (Object) this);
 
+        Bus.EVENT_BUS.post(event);
 
+        if (event.isCancelled())
+        {
+            ci.cancel();
+            return;
+        }
 
+        AxisAlignedBB eventBB = event.getBB();
 
+        if (eventBB != null)
+        {
+            addCollisionBoxToList(pos, entityBox, collidingBoxes, eventBB);
+        }
 
-
-
+        ci.cancel();
+    }
 }
