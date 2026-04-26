@@ -1,7 +1,5 @@
 package me.earth.earthhack.impl.util.ncp;
 
-import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
-import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.PositionHistoryHelper;
 import me.earth.earthhack.impl.util.math.rotation.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
@@ -16,8 +14,8 @@ public class Visible {
             return !checkRayTracing(x, y, z, direction.x, direction.y, direction.z, blockX, blockY, blockZ);
         }
 
-        public boolean checkFlyingQueue(double x, double y, double z, float oldYaw, float oldPitch, int blockX, int blockY, int blockZ, PositionHistoryHelper history) {
-            return super.checkFlyingQueue(x, y, z, oldYaw, oldPitch, blockX, blockY, blockZ, history);
+        public boolean checkFlyingQueue(double x, double y, double z, float oldYaw, float oldPitch, int blockX, int blockY, int blockZ) {
+            return super.checkFlyingQueue(x, y, z, oldYaw, oldPitch, blockX, blockY, blockZ);
         }
     }
 
@@ -49,7 +47,7 @@ public class Visible {
         if (isSameBlock(blockX, blockY, blockZ, x, eyeY, z)) {
             collides = false;
         } else {
-            collides = !checker.checkFlyingQueue(x, eyeY, z, yaw, pitch, blockX, blockY, blockZ, AutoCrystal.POSITION_HISTORY);
+            collides = !checker.checkFlyingQueue(x, eyeY, z, yaw, pitch, blockX, blockY, blockZ);
         }
 
         return collides;

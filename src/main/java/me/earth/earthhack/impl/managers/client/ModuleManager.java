@@ -32,7 +32,7 @@ import me.earth.earthhack.impl.modules.client.safety.Safety;
 import me.earth.earthhack.impl.modules.client.server.ServerModule;
 import me.earth.earthhack.impl.modules.client.settings.SettingsModule;
 import me.earth.earthhack.impl.modules.client.tab.TabModule;
-import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
+
 import me.earth.earthhack.impl.modules.combat.autofeettrap.AutoFeetTrap;
 import me.earth.earthhack.impl.modules.combat.crystalaura.CrystalAura;
 import me.earth.earthhack.impl.modules.combat.holefiller.HoleFiller;
@@ -85,9 +85,8 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new TabModule());
         this.forceRegister(new Media());
 
-        this.forceRegister(new AutoCrystal());
+
         this.forceRegister(new AutoFeetTrap());
-        this.forceRegister(new CrystalAura());
         this.forceRegister(new HoleFiller());
         this.forceRegister(new KillAura());
         this.forceRegister(new Offhand());

@@ -8,7 +8,6 @@ import me.earth.earthhack.impl.modules.client.nospoof.NoSpoof;
 import me.earth.earthhack.impl.modules.client.pbteleport.PbTeleport;
 import me.earth.earthhack.impl.modules.client.pingbypass.PingBypassModule;
 import me.earth.earthhack.impl.modules.client.pingbypass.PingBypassSubmodule;
-import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
 
 import me.earth.earthhack.impl.modules.player.fakeplayer.FakePlayer;
 
@@ -27,9 +26,6 @@ public class PbModuleManager extends ModuleManager {
                 || module instanceof PbTeleport
                 || module instanceof NoSpoof) {
                 pbModule = module;
-            } else if (module instanceof AutoCrystal) {
-                pbModule = new PbModule(module);
-                PbAC.registerAcPages(pbModule);
             } else {
                 pbModule = new PbModule(module);
             }

@@ -5,7 +5,6 @@ import me.earth.earthhack.api.util.interfaces.Globals;
 import me.earth.earthhack.impl.event.events.misc.TickEvent;
 import me.earth.earthhack.impl.event.events.render.Render3DEvent;
 import me.earth.earthhack.impl.event.listeners.LambdaListener;
-import me.earth.earthhack.impl.modules.combat.autocrystal.util.TimeStamp;
 import me.earth.earthhack.impl.util.render.mutables.BBRender;
 import me.earth.earthhack.impl.util.render.mutables.MutableBB;
 import me.earth.earthhack.pingbypass.protocol.s2c.S2CRenderPacket;
@@ -39,6 +38,11 @@ public class PbRenderer extends SubscriberImpl implements Globals {
 
     public void addRender(S2CRenderPacket packet) {
         renders.put(packet.getBb(), new Render(packet));
+    }
+
+    private static class TimeStamp {
+        private final long timeStamp = System.currentTimeMillis();
+        public long getTimeStamp() { return timeStamp; }
     }
 
     private static final class Render extends TimeStamp {

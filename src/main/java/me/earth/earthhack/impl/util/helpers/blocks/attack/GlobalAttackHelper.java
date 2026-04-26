@@ -4,7 +4,6 @@ import me.earth.earthhack.api.event.bus.EventListener;
 import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.api.event.events.Stage;
 import me.earth.earthhack.impl.event.events.network.MotionUpdateEvent;
-import me.earth.earthhack.impl.modules.combat.autocrystal.HelperUtil;
 import me.earth.earthhack.impl.util.math.rotation.RotationUtil;
 import me.earth.earthhack.impl.util.minecraft.DamageUtil;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityUtil;
@@ -47,55 +46,7 @@ public class GlobalAttackHelper implements AttackHelper
     @Override
     public boolean attackAny(List<Entity> entities, AttackingModule module)
     {
-        if (invalid)
-        {
-            return false;
-        }
-
-        if (attacked || noCrystal)
-        {
-            return true;
-        }
-
-        Entity best = null;
-        boolean noCrystal = true;
-        float minDamage = Float.MAX_VALUE;
-        for (Entity entity : entities)
-        {
-            if (entity instanceof EntityEnderCrystal
-                    && !EntityUtil.isDead(entity)
-                    && entity.getDistanceSq(RotationUtil.getRotationPlayer())
-                        < 36.0)
-            {
-                noCrystal = false;
-                if (HelperUtil.valid(entity,
-                                     module.getRange(),
-                                     module.getTrace()))
-                {
-                    float damage = DamageUtil.calculate(entity);
-                    if (module.getPop().shouldPop(damage, module.getPopTime())
-                        && damage < minDamage)
-                    {
-                        best = entity;
-                        minDamage = damage;
-                    }
-                }
-            }
-        }
-
-        if (best != null)
-        {
-            PacketUtil.attack(best);
-            attacked = true;
-            return true;
-        }
-        else if (!noCrystal)
-        {
-            invalid = true;
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     public void setAttacked(boolean attacked)

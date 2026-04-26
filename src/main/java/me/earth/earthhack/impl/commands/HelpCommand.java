@@ -57,7 +57,7 @@ public class HelpCommand extends Command implements Globals
                 if (command instanceof ModuleCommand)
                 {
                     style.setClickEvent(new RunnableClickEvent(() ->
-                        setText(Commands.getPrefix() + "AutoCrystal")));
+                        setText(Commands.getPrefix() + command.getName())));
                 }
                 else
                 {
