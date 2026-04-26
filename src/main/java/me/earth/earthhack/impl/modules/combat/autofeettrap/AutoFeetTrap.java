@@ -79,7 +79,7 @@ public class AutoFeetTrap extends Module
         this.listeners.add(new ListenerTick(this));
         this.setData(new SimpleData(this,
             "Places blocks around your feet like surround for NCP-friendly trapping.",
-            0xff8fdaff));
+            (int) 0xff8fdaffL));
     }
 
     @Override
