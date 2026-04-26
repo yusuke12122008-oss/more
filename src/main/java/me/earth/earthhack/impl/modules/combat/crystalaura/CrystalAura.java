@@ -1,6 +1,5 @@
 package me.earth.earthhack.impl.modules.combat.crystalaura;
 
-import me.earth.earthhack.api.event.bus.EventListener;
 import me.earth.earthhack.api.module.Module;
 import me.earth.earthhack.api.module.util.Category;
 import me.earth.earthhack.api.setting.Setting;
@@ -10,9 +9,6 @@ import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.api.util.bind.Bind;
 import me.earth.earthhack.impl.core.ducks.entity.IEntity;
-import me.earth.earthhack.impl.event.events.misc.TickEvent;
-import me.earth.earthhack.impl.event.events.keyboard.KeyboardEvent;
-import me.earth.earthhack.impl.event.events.network.PacketEvent;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.combat.autocrystal.CrystalPositionCache;
 import me.earth.earthhack.impl.modules.combat.autocrystal.SwapStateTracker;
@@ -27,16 +23,11 @@ import net.minecraft.entity.item.EntityEnderCrystal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.client.CPacketPlayer;
 import net.minecraft.network.play.client.CPacketHeldItemChange;
-import net.minecraft.network.play.server.SPacketDestroyEntities;
-import net.minecraft.network.play.server.SPacketSoundEffect;
-import net.minecraft.network.play.server.SPacketSpawnObject;
+import net.minecraft.network.play.client.CPacketPlayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
-import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -47,226 +38,67 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CrystalAura extends Module
 {
-    private final Setting<Float> placeRange = register(new NumberSetting<>("PlaceRange", 4.5f, 0.0f, 8.0f));
-    private final Setting<Float> breakRange = register(new NumberSetting<>("BreakRange", 4.8f, 0.0f, 8.0f));
-    private final Setting<Float> wallRange = register(new NumberSetting<>("WallRange", 3.0f, 0.0f, 8.0f));
-    private final Setting<Integer> placeDelay = register(new NumberSetting<>("PlaceDelay", 45, 0, 500));
-    private final Setting<Integer> breakDelay = register(new NumberSetting<>("BreakDelay", 45, 0, 500));
-    private final Setting<Float> minDamage = register(new NumberSetting<>("MinDamage", 6.0f, 0.0f, 20.0f));
-    private final Setting<Float> maxSelfDamage = register(new NumberSetting<>("MaxSelfDamage", 8.0f, 0.0f, 20.0f));
+    protected final Setting<Float> placeRange = register(new NumberSetting<>("PlaceRange", 4.5f, 0.0f, 8.0f));
+    protected final Setting<Float> breakRange = register(new NumberSetting<>("BreakRange", 4.8f, 0.0f, 8.0f));
+    protected final Setting<Float> wallRange = register(new NumberSetting<>("WallRange", 3.0f, 0.0f, 8.0f));
+    protected final Setting<Integer> placeDelay = register(new NumberSetting<>("PlaceDelay", 45, 0, 500));
+    protected final Setting<Integer> breakDelay = register(new NumberSetting<>("BreakDelay", 45, 0, 500));
+    protected final Setting<Float> minDamage = register(new NumberSetting<>("MinDamage", 6.0f, 0.0f, 20.0f));
+    protected final Setting<Float> maxSelfDamage = register(new NumberSetting<>("MaxSelfDamage", 8.0f, 0.0f, 20.0f));
 
-    private final Setting<Boolean> rotate = register(new BooleanSetting("Rotate", true));
-    private final Setting<Boolean> predictSpawn = register(new BooleanSetting("Predict", true));
-    private final Setting<Boolean> antiWeakness = register(new BooleanSetting("AntiWeakness", true));
-    private final Setting<Boolean> antiSuicide = register(new BooleanSetting("AntiSuicide", true));
-    private final Setting<Boolean> raytrace = register(new BooleanSetting("Raytrace", true));
-    private final Setting<Boolean> facePlace = register(new BooleanSetting("FacePlace", true));
-    private final Setting<Float> facePlaceHealth = register(new NumberSetting<>("FacePlaceHealth", 10.0f, 0.0f, 36.0f));
-    private final Setting<Integer> armorBreaker = register(new NumberSetting<>("ArmorBreaker", 12, 0, 100));
-    private final Setting<Boolean> multiThread = register(new BooleanSetting("MultiThread", false));
+    protected final Setting<Boolean> rotate = register(new BooleanSetting("Rotate", true));
+    protected final Setting<Boolean> predictSpawn = register(new BooleanSetting("Predict", true));
+    protected final Setting<Boolean> antiWeakness = register(new BooleanSetting("AntiWeakness", true));
+    protected final Setting<Boolean> antiSuicide = register(new BooleanSetting("AntiSuicide", true));
+    protected final Setting<Boolean> raytrace = register(new BooleanSetting("Raytrace", true));
+    protected final Setting<Boolean> facePlace = register(new BooleanSetting("FacePlace", true));
+    protected final Setting<Float> facePlaceHealth = register(new NumberSetting<>("FacePlaceHealth", 10.0f, 0.0f, 36.0f));
+    protected final Setting<Integer> armorBreaker = register(new NumberSetting<>("ArmorBreaker", 12, 0, 100));
+    protected final Setting<Boolean> multiThread = register(new BooleanSetting("MultiThread", false));
 
-    // ---- Desync / SetDead
-    private final Setting<Boolean> setDead = register(new BooleanSetting("SetDead", false));
-    private final Setting<Boolean> pseudoDead = register(new BooleanSetting("PseudoDead", false));
-    private final Setting<Boolean> soundRemove = register(new BooleanSetting("SoundRemove", true));
-    private final Setting<Integer> deathTime = register(new NumberSetting<>("DeathTime", 0, 0, 500));
-    private final Setting<Boolean> useSafeDeathTime = register(new BooleanSetting("UseSafeDeathTime", false));
-    private final Setting<Integer> safeDeathTime = register(new NumberSetting<>("SafeDeathTime", 0, 0, 500));
+    protected final Setting<Boolean> setDead = register(new BooleanSetting("SetDead", false));
+    protected final Setting<Boolean> pseudoDead = register(new BooleanSetting("PseudoDead", false));
+    protected final Setting<Boolean> soundRemove = register(new BooleanSetting("SoundRemove", true));
+    protected final Setting<Integer> deathTime = register(new NumberSetting<>("DeathTime", 0, 0, 500));
+    protected final Setting<Boolean> useSafeDeathTime = register(new BooleanSetting("UseSafeDeathTime", false));
+    protected final Setting<Integer> safeDeathTime = register(new NumberSetting<>("SafeDeathTime", 0, 0, 500));
 
-    // ---- Sequential / AntiPlaceFail
-    private final Setting<Boolean> sequential = register(new BooleanSetting("Sequential", true));
-    private final Setting<Integer> seqTime = register(new NumberSetting<>("SeqTime", 250, 0, 1000));
-    private final Setting<Boolean> endSequenceOnSpawn = register(new BooleanSetting("EndSeqOnSpawn", true));
-    private final Setting<Boolean> endSequenceOnBreak = register(new BooleanSetting("EndSeqOnBreak", true));
-    private final Setting<Boolean> endSequenceOnExplosion = register(new BooleanSetting("EndSeqOnExplosion", true));
-    private final Setting<Boolean> antiPlaceFail = register(new BooleanSetting("AntiPlaceFail", true));
+    protected final Setting<Boolean> sequential = register(new BooleanSetting("Sequential", true));
+    protected final Setting<Integer> seqTime = register(new NumberSetting<>("SeqTime", 250, 0, 1000));
+    protected final Setting<Boolean> endSequenceOnSpawn = register(new BooleanSetting("EndSeqOnSpawn", true));
+    protected final Setting<Boolean> endSequenceOnBreak = register(new BooleanSetting("EndSeqOnBreak", true));
+    protected final Setting<Boolean> endSequenceOnExplosion = register(new BooleanSetting("EndSeqOnExplosion", true));
+    protected final Setting<Boolean> antiPlaceFail = register(new BooleanSetting("AntiPlaceFail", true));
 
-    // ---- Swap
-    private final Setting<AutoSwitchMode> autoSwitch = register(new EnumSetting<>("AutoSwitch", AutoSwitchMode.Always));
-    private final Setting<Bind> switchBind = register(new BindSetting("SwitchBind", Bind.none()));
-    private final Setting<Boolean> switchBack = register(new BooleanSetting("SwitchBack", true));
-    private final Setting<Integer> swapDelay = register(new NumberSetting<>("SwapDelay", 0, 0, 500));
+    protected final Setting<AutoSwitchMode> autoSwitch = register(new EnumSetting<>("AutoSwitch", AutoSwitchMode.Always));
+    protected final Setting<Bind> switchBind = register(new BindSetting("SwitchBind", Bind.none()));
+    protected final Setting<Boolean> switchBack = register(new BooleanSetting("SwitchBack", true));
+    protected final Setting<Integer> swapDelay = register(new NumberSetting<>("SwapDelay", 0, 0, 500));
 
-    private final Setting<TargetMode> targetMode = register(new EnumSetting<>("Target", TargetMode.Distance));
+    protected final Setting<TargetMode> targetMode = register(new EnumSetting<>("Target", TargetMode.Distance));
 
-    private final GuardTimer placeTimer = new GuardTimer();
-    private final GuardTimer breakTimer = new GuardTimer();
-    private final GuardTimer seqTimer = new GuardTimer();
+    protected final GuardTimer placeTimer = new GuardTimer();
+    protected final GuardTimer breakTimer = new GuardTimer();
+    protected final GuardTimer seqTimer = new GuardTimer();
 
-    private final CrystalPositionCache positionCache = new CrystalPositionCache();
-    private final SwapStateTracker swapStateTracker = new SwapStateTracker();
-    private final Object stateLock = new Object();
-    private final AtomicBoolean calculating = new AtomicBoolean(false);
+    protected final CrystalPositionCache positionCache = new CrystalPositionCache();
+    protected final SwapStateTracker swapStateTracker = new SwapStateTracker();
+    protected final Object stateLock = new Object();
+    protected final AtomicBoolean calculating = new AtomicBoolean(false);
 
-    private EntityPlayer target;
-    private BlockPos expecting;
-    private boolean switching;
+    protected EntityPlayer target;
+    protected BlockPos expecting;
+    protected boolean switching;
 
     public CrystalAura()
     {
         super("CrystalAura", Category.Combat);
-
-        this.listeners.add(new EventListener<TickEvent>(TickEvent.class)
-        {
-            @Override
-            public void invoke(TickEvent event)
-            {
-                if (multiThread.getValue())
-                {
-                    if (!calculating.compareAndSet(false, true))
-                    {
-                        return;
-                    }
-
-                    Managers.THREAD.submitRunnable(() ->
-                    {
-                        try
-                        {
-                            synchronized (stateLock)
-                            {
-                                runAura();
-                            }
-                        }
-                        finally
-                        {
-                            calculating.set(false);
-                        }
-                    });
-                }
-                else
-                {
-                    calculating.set(true);
-                    synchronized (stateLock)
-                    {
-                        try
-                        {
-                            runAura();
-                        }
-                        finally
-                        {
-                            calculating.set(false);
-                        }
-                    }
-                }
-            }
-        });
-
-        this.listeners.add(new EventListener<KeyboardEvent>(KeyboardEvent.class)
-        {
-            @Override
-            public void invoke(KeyboardEvent event)
-            {
-                int bind = switchBind.getValue().getKey();
-                if (bind != -1
-                    && event.getEventState()
-                    && event.getKey() == bind
-                    && autoSwitch.getValue() == AutoSwitchMode.Bind)
-                {
-                    synchronized (stateLock)
-                    {
-                        switching = !switching;
-                    }
-                }
-            }
-        });
-
-        this.listeners.add(new EventListener<PacketEvent.Receive<SPacketSpawnObject>>(PacketEvent.Receive.class, SPacketSpawnObject.class)
-        {
-            @Override
-            public void invoke(PacketEvent.Receive<SPacketSpawnObject> event)
-            {
-                if (mc.player == null || mc.world == null)
-                {
-                    return;
-                }
-
-                SPacketSpawnObject packet = event.getPacket();
-                if (packet.getType() != 51)
-                {
-                    return;
-                }
-
-                synchronized (stateLock)
-                {
-                    BlockPos crystalPos = new BlockPos(packet.getX(), packet.getY(), packet.getZ());
-                    BlockPos base = crystalPos.down();
-                    positionCache.confirmPlace(crystalPos);
-
-                    if (expecting != null && expecting.equals(base) && endSequenceOnSpawn.getValue())
-                    {
-                        clearSequence();
-                    }
-
-                    if (predictSpawn.getValue()
-                        && breakTimer.passed(breakDelay.getValue())
-                        && canAttackSpawn(crystalPos, base))
-                    {
-                        PacketUtil.attack(packet.getEntityID());
-                        breakTimer.reset(breakDelay.getValue());
-                    }
-                }
-            }
-        });
-
-        this.listeners.add(new EventListener<PacketEvent.Receive<SPacketDestroyEntities>>(PacketEvent.Receive.class, SPacketDestroyEntities.class)
-        {
-            @Override
-            public void invoke(PacketEvent.Receive<SPacketDestroyEntities> event)
-            {
-                if (mc.player == null || mc.world == null)
-                {
-                    return;
-                }
-
-                synchronized (stateLock)
-                {
-                    for (int id : event.getPacket().getEntityIDs())
-                    {
-                        Entity e = mc.world.getEntityByID(id);
-                        if (e instanceof EntityEnderCrystal)
-                        {
-                            positionCache.markExploded(e.getPosition());
-                            if (endSequenceOnBreak.getValue())
-                            {
-                                clearSequence();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        this.listeners.add(new EventListener<PacketEvent.Receive<SPacketSoundEffect>>(PacketEvent.Receive.class, SPacketSoundEffect.class)
-        {
-            @Override
-            public void invoke(PacketEvent.Receive<SPacketSoundEffect> event)
-            {
-                if (mc.player == null || mc.world == null)
-                {
-                    return;
-                }
-
-                if (!soundRemove.getValue())
-                {
-                    return;
-                }
-
-                SPacketSoundEffect packet = event.getPacket();
-                if (packet.getCategory() == SoundCategory.BLOCKS
-                    && packet.getSound() == SoundEvents.ENTITY_GENERIC_EXPLODE)
-                {
-                    synchronized (stateLock)
-                    {
-                        BlockPos exploded = new BlockPos(packet.getX(), packet.getY(), packet.getZ()).down();
-                        positionCache.markExploded(exploded.up());
-                        if (endSequenceOnExplosion.getValue())
-                        {
-                            clearSequence();
-                        }
-                    }
-                }
-            }
-        });
+        this.listeners.add(new ListenerTick(this));
+        this.listeners.add(new ListenerKeyboard(this));
+        this.listeners.add(new ListenerSpawnObject(this));
+        this.listeners.add(new ListenerDestroyEntities(this));
+        this.listeners.add(new ListenerSound(this));
+        this.setData(new CrystalAuraData(this));
     }
 
     @Override
@@ -288,7 +120,48 @@ public class CrystalAura extends Module
         return target == null ? null : target.getName();
     }
 
-    private void runAura()
+    protected void runThreadedTick()
+    {
+        if (multiThread.getValue())
+        {
+            if (!calculating.compareAndSet(false, true))
+            {
+                return;
+            }
+
+            Managers.THREAD.submitRunnable(() ->
+            {
+                try
+                {
+                    synchronized (stateLock)
+                    {
+                        runAura();
+                    }
+                }
+                finally
+                {
+                    calculating.set(false);
+                }
+            });
+        }
+        else
+        {
+            calculating.set(true);
+            synchronized (stateLock)
+            {
+                try
+                {
+                    runAura();
+                }
+                finally
+                {
+                    calculating.set(false);
+                }
+            }
+        }
+    }
+
+    protected void runAura()
     {
         if (mc.player == null || mc.world == null)
         {
@@ -338,7 +211,7 @@ public class CrystalAura extends Module
         }
     }
 
-    private EntityPlayer findTarget()
+    protected EntityPlayer findTarget()
     {
         Comparator<EntityPlayer> comparator = targetMode.getValue() == TargetMode.Health
             ? Comparator.comparingDouble(EntityPlayer::getHealth)
@@ -366,7 +239,7 @@ public class CrystalAura extends Module
         return best;
     }
 
-    private BlockPos findBestPlace(EntityPlayer enemy)
+    protected BlockPos findBestPlace(EntityPlayer enemy)
     {
         BlockPos center = new BlockPos(enemy.posX, enemy.posY, enemy.posZ);
         int r = MathHelper.ceil(placeRange.getValue());
@@ -414,7 +287,7 @@ public class CrystalAura extends Module
         return bestPos;
     }
 
-    private EntityEnderCrystal findBestCrystal(EntityPlayer enemy)
+    protected EntityEnderCrystal findBestCrystal(EntityPlayer enemy)
     {
         EntityEnderCrystal best = null;
         float bestDamage = minDamage.getValue();
@@ -466,7 +339,7 @@ public class CrystalAura extends Module
         return best;
     }
 
-    private void attackCrystal(EntityEnderCrystal crystal)
+    protected void attackCrystal(EntityEnderCrystal crystal)
     {
         Runnable task = () -> {
             int oldSlot = mc.player.inventory.currentItem;
@@ -515,11 +388,11 @@ public class CrystalAura extends Module
         Locks.acquire(Locks.PLACE_SWITCH_LOCK, task);
     }
 
-    private void placeCrystal(BlockPos pos)
+    protected void placeCrystal(BlockPos pos)
     {
         int crystalSlot = InventoryUtil.findHotbarItem(Items.END_CRYSTAL);
         boolean shouldSwitch = autoSwitch.getValue() == AutoSwitchMode.Always
-                               || autoSwitch.getValue() == AutoSwitchMode.Bind && switching;
+            || autoSwitch.getValue() == AutoSwitchMode.Bind && switching;
         if (!shouldSwitch && crystalSlot != mc.player.inventory.currentItem && crystalSlot != -2)
         {
             return;
@@ -562,7 +435,7 @@ public class CrystalAura extends Module
         });
     }
 
-    private void swapTo(int slot)
+    protected void swapTo(int slot)
     {
         int old = mc.player.inventory.currentItem;
         if (old == slot)
@@ -582,7 +455,7 @@ public class CrystalAura extends Module
         swapStateTracker.onSwap(old, slot, hotbarCopy);
     }
 
-    private boolean shouldFacePlace(EntityPlayer enemy)
+    protected boolean shouldFacePlace(EntityPlayer enemy)
     {
         if (!facePlace.getValue())
         {
@@ -605,7 +478,7 @@ public class CrystalAura extends Module
         return false;
     }
 
-    private boolean isValidBase(BlockPos pos)
+    protected boolean isValidBase(BlockPos pos)
     {
         Block base = mc.world.getBlockState(pos).getBlock();
         if (base != Blocks.OBSIDIAN && base != Blocks.BEDROCK)
@@ -621,14 +494,14 @@ public class CrystalAura extends Module
             && mc.world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(up2)).isEmpty();
     }
 
-    private boolean canPlaceRangeTrace(BlockPos pos)
+    protected boolean canPlaceRangeTrace(BlockPos pos)
     {
         Vec3d eyes = mc.player.getPositionEyes(1.0f);
         Vec3d hit = new Vec3d(pos).add(0.5, 1.0, 0.5);
         return mc.world.rayTraceBlocks(eyes, hit, false, true, false) == null;
     }
 
-    private int getDeathTime()
+    protected int getDeathTime()
     {
         float health = mc.player.getHealth() + mc.player.getAbsorptionAmount();
         return useSafeDeathTime.getValue() && health <= facePlaceHealth.getValue()
@@ -636,12 +509,12 @@ public class CrystalAura extends Module
             : deathTime.getValue();
     }
 
-    private void clearSequence()
+    protected void clearSequence()
     {
         expecting = null;
     }
 
-    private void lookAt(Vec3d vec)
+    protected void lookAt(Vec3d vec)
     {
         double x = vec.x - mc.player.posX;
         double y = vec.y - (mc.player.posY + mc.player.getEyeHeight());
@@ -652,7 +525,7 @@ public class CrystalAura extends Module
         mc.player.connection.sendPacket(new CPacketPlayer.Rotation(yaw, pitch, mc.player.onGround));
     }
 
-    private boolean canAttackSpawn(BlockPos crystalPos, BlockPos base)
+    protected boolean canAttackSpawn(BlockPos crystalPos, BlockPos base)
     {
         if (mc.player.getDistanceSq(base) > sq(breakRange.getValue()))
         {
@@ -685,7 +558,7 @@ public class CrystalAura extends Module
                 || selfDamage < mc.player.getHealth() + mc.player.getAbsorptionAmount() - 1.0f);
     }
 
-    private static double sq(double d)
+    protected static double sq(double d)
     {
         return d * d;
     }
