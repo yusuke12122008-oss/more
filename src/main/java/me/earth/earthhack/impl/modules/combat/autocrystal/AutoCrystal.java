@@ -36,7 +36,6 @@ import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
 import me.earth.earthhack.impl.util.minecraft.MovementUtil;
 import me.earth.earthhack.impl.util.minecraft.CooldownBypass;
 import me.earth.earthhack.impl.util.minecraft.blocks.BlockUtil;
-import me.earth.earthhack.impl.util.minecraft.blocks.mine.MineUtil;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityUtil;
 import me.earth.earthhack.impl.util.misc.collections.CollectionUtil;
 import me.earth.earthhack.impl.util.network.ServerUtil;
@@ -385,6 +384,46 @@ public class AutoCrystal extends Module
                 .setComplexity(Complexity.Medium);
     protected final Setting<Boolean> motionCalc =
             register(new BooleanSetting("Motion-Calc", false))
+                .setComplexity(Complexity.Expert);
+
+    /* ------------- Sequential Settings -------------- */
+    protected final Setting<Boolean> sequential =
+            register(new BooleanSetting("Sequential", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> seqTime =
+            register(new NumberSetting<>("SeqTime", 500, 0, 2000))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> antiPlaceFail =
+            register(new BooleanSetting("AntiPlaceFail", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> debugAntiPlaceFail =
+            register(new BooleanSetting("DebugAntiPlaceFail", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnSpawn =
+            register(new BooleanSetting("EndOnSpawn", true))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnBreak =
+            register(new BooleanSetting("EndOnBreak", true))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnExplosion =
+            register(new BooleanSetting("EndOnExplosion", true))
+                .setComplexity(Complexity.Expert);
+
+    /* ------------- Position Comparison -------------- */
+    protected final Setting<Boolean> useSafetyFactor =
+            register(new BooleanSetting("UseSafetyFactor", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> safetyFactor =
+            register(new NumberSetting<>("SafetyFactor", 1.0, 0.0, 5.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> selfFactor =
+            register(new NumberSetting<>("SelfFactor", 1.0, 0.0, 5.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> compareDiff =
+            register(new NumberSetting<>("CompareDiff", 0.0, 0.0, 10.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> facePlaceCompare =
+            register(new BooleanSetting("FacePlaceCompare", false))
                 .setComplexity(Complexity.Expert);
 
     /* ---------------- FacePlace and ArmorPlace -------------- */
@@ -966,7 +1005,7 @@ public class AutoCrystal extends Module
     public  final HelperSequential       sequentialHelper;
     public  final HelperRotation         rotationHelper;
     public  final HelperRange            rangeHelper;
-    public  final HelperInstantAttack    idHelper;
+    public  final IDHelper               idHelper;
     public  final WeaknessHelper         weaknessHelper;
     public  final AntiTotemHelper        antiTotemHelper;
     public  final DamageSyncHelper       damageSyncHelper;
@@ -977,6 +1016,7 @@ public class AutoCrystal extends Module
     public  final ThreadHelper           threadHelper;
     public  final ServerTimeHelper       serverTimeHelper;
     public  final FakeCrystalRender      crystalRender;
+    public  final HelperEntityBlocksPlace bbBlockingHelper;
 
     /* --- 状態変数 --- */
     public  volatile RotationFunction rotation;
@@ -1007,7 +1047,7 @@ public class AutoCrystal extends Module
         this.sequentialHelper    = new HelperSequential(this);
         this.rotationHelper      = new HelperRotation(this);
         this.rangeHelper         = new HelperRange(this);
-        this.idHelper            = new HelperInstantAttack();
+        this.idHelper            = new IDHelper(basePlaceOnly);
         this.weaknessHelper      = new WeaknessHelper(antiWeakness, cooldown);
         this.antiTotemHelper     = new AntiTotemHelper(totemHealth);
         this.damageSyncHelper    = new DamageSyncHelper(
@@ -1024,6 +1064,7 @@ public class AutoCrystal extends Module
         this.serverTimeHelper    = new ServerTimeHelper(
             this, rotate, placeSwing, antiFeetPlace, newVer, feetBuffer);
         this.crystalRender       = new FakeCrystalRender(simulatePlace);
+        this.bbBlockingHelper    = new HelperEntityBlocksPlace(this);
 
         // --- リスナー登録 ---
         this.listeners.add(new ListenerGameLoop(this));
@@ -1285,6 +1326,12 @@ public class AutoCrystal extends Module
         antiTotemHelper.setTarget(player);
     }
 
+    /** 現在のターゲットプレイヤーを取得 */
+    public EntityPlayer getTarget()
+    {
+        return antiTotemHelper.getTarget();
+    }
+
     /** PingBypass が有効かどうか */
     public boolean isPingBypass()
     {
@@ -1473,11 +1520,8 @@ public class AutoCrystal extends Module
         return bypassPos;
     }
 
-    /** ターゲットを取得 (HelperRotation が参照) */
-    public EntityPlayer getTarget()
-    {
-        return antiTotemHelper.getTarget();
-    }
+
+
 
     /** ワールド変更時にリセット (ListenerWorldClient が呼ぶ) */
     public void reset()
