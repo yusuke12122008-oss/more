@@ -15,6 +15,9 @@ import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.pingbypass.PingBypassModule;
 import me.earth.earthhack.impl.modules.client.settings.SettingsModule;
 import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.*;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.FakeCrystalRender;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.ServerTimeHelper;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.ThreadHelper;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.CrystalTimeStamp;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.RotationFunction;
@@ -33,7 +36,6 @@ import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
 import me.earth.earthhack.impl.util.minecraft.MovementUtil;
 import me.earth.earthhack.impl.util.minecraft.CooldownBypass;
 import me.earth.earthhack.impl.util.minecraft.blocks.BlockUtil;
-import me.earth.earthhack.impl.util.minecraft.blocks.mine.MineUtil;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityUtil;
 import me.earth.earthhack.impl.util.misc.collections.CollectionUtil;
 import me.earth.earthhack.impl.util.network.ServerUtil;
@@ -382,6 +384,46 @@ public class AutoCrystal extends Module
                 .setComplexity(Complexity.Medium);
     protected final Setting<Boolean> motionCalc =
             register(new BooleanSetting("Motion-Calc", false))
+                .setComplexity(Complexity.Expert);
+
+    /* ------------- Sequential Settings -------------- */
+    protected final Setting<Boolean> sequential =
+            register(new BooleanSetting("Sequential", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> seqTime =
+            register(new NumberSetting<>("SeqTime", 500, 0, 2000))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> antiPlaceFail =
+            register(new BooleanSetting("AntiPlaceFail", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> debugAntiPlaceFail =
+            register(new BooleanSetting("DebugAntiPlaceFail", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnSpawn =
+            register(new BooleanSetting("EndOnSpawn", true))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnBreak =
+            register(new BooleanSetting("EndOnBreak", true))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> endSequenceOnExplosion =
+            register(new BooleanSetting("EndOnExplosion", true))
+                .setComplexity(Complexity.Expert);
+
+    /* ------------- Position Comparison -------------- */
+    protected final Setting<Boolean> useSafetyFactor =
+            register(new BooleanSetting("UseSafetyFactor", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> safetyFactor =
+            register(new NumberSetting<>("SafetyFactor", 1.0, 0.0, 5.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> selfFactor =
+            register(new NumberSetting<>("SelfFactor", 1.0, 0.0, 5.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Double> compareDiff =
+            register(new NumberSetting<>("CompareDiff", 0.0, 0.0, 10.0))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> facePlaceCompare =
+            register(new BooleanSetting("FacePlaceCompare", false))
                 .setComplexity(Complexity.Expert);
 
     /* ---------------- FacePlace and ArmorPlace -------------- */
@@ -820,8 +862,8 @@ public class AutoCrystal extends Module
     protected final Setting<RotationThread> rotationThread =
             register(new EnumSetting<>("RotationThread", RotationThread.Predict))
                 .setComplexity(Complexity.Expert);
-    protected final Setting<Boolean> partial =
-            register(new BooleanSetting("Partial", false))
+    protected final Setting<Float> partial =
+            register(new NumberSetting<>("Partial", 0.0f, 0.0f, 1.0f))
                 .setComplexity(Complexity.Expert);
     protected final Setting<Integer> maxCancel =
             register(new NumberSetting<>("MaxCancel", 200, 0, 500))
@@ -887,6 +929,29 @@ public class AutoCrystal extends Module
             register(new BooleanSetting("Spectator", false))
                 .setComplexity(Complexity.Expert);
 
+    /* ---------------- Server-Thread / ServerTime Settings -------------- */
+    protected final Setting<Boolean> mainThreadThreads =
+            register(new BooleanSetting("MainThreadThreads", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> tickThreshold =
+            register(new NumberSetting<>("TickThreshold", 0, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> preSpawn =
+            register(new NumberSetting<>("PreSpawn", 0, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> maxEarlyThread =
+            register(new NumberSetting<>("MaxEarlyThread", 10, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> spawnThreadWhenAttacked =
+            register(new BooleanSetting("SpawnThreadWhenAttacked", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> alwaysBomb =
+            register(new BooleanSetting("AlwaysBomb", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> removeTime =
+            register(new NumberSetting<>("RemoveTime", 2000, 0, 10000))
+                .setComplexity(Complexity.Expert);
+
     // =====================================================================
     // [NEW] スワップ / RTT 関連設定
     // =====================================================================
@@ -921,7 +986,7 @@ public class AutoCrystal extends Module
     public  final StopWatch     liquidTimer     = new StopWatch();
     public  final StopWatch     forceTimer      = new StopWatch();
     public  final StopWatch     shieldTimer     = new StopWatch();
-    public  final DiscreteTimer feetTimer       = new DiscreteTimer();
+    public  final DiscreteTimer feetTimer       = new GuardTimer();
 
     /* --- マップ / キュー --- */
     /** 配置済みクリスタルの座標→タイムスタンプ (SpawnThread などが参照) */
@@ -940,7 +1005,7 @@ public class AutoCrystal extends Module
     public  final HelperSequential       sequentialHelper;
     public  final HelperRotation         rotationHelper;
     public  final HelperRange            rangeHelper;
-    public  final HelperInstantAttack    idHelper;
+    public  final IDHelper               idHelper;
     public  final WeaknessHelper         weaknessHelper;
     public  final AntiTotemHelper        antiTotemHelper;
     public  final DamageSyncHelper       damageSyncHelper;
@@ -948,13 +1013,24 @@ public class AutoCrystal extends Module
     public  final DamageHelper           damageHelper;
     public  final ForceHelper            forceHelper;
     public  final RotationCanceller      rotationCanceller;
+    public  final ThreadHelper           threadHelper;
+    public  final ServerTimeHelper       serverTimeHelper;
+    public  final FakeCrystalRender      crystalRender;
+    public  final HelperEntityBlocksPlace bbBlockingHelper;
 
     /* --- 状態変数 --- */
     public  volatile RotationFunction rotation;
     public  volatile Entity  focus;
     public  volatile boolean switching;
     public  volatile boolean noGod;
+    public  volatile boolean isSpoofing;
+    public  volatile BlockPos bombPos;
+    public  volatile BlockPos slidePos;
+    public  volatile String   damage = "";
     public  final AtomicInteger motionID = new AtomicInteger();
+    public  final StopWatch     pullTimer  = new StopWatch();
+    public  final StopWatch     slideTimer = new StopWatch();
+    public  final StopWatch     zoomTimer  = new StopWatch();
 
     // =====================================================================
     // コンストラクタ
@@ -971,32 +1047,50 @@ public class AutoCrystal extends Module
         this.sequentialHelper    = new HelperSequential(this);
         this.rotationHelper      = new HelperRotation(this);
         this.rangeHelper         = new HelperRange(this);
-        this.idHelper            = new HelperInstantAttack(this);
-        this.weaknessHelper      = new WeaknessHelper(this);
-        this.antiTotemHelper     = new AntiTotemHelper(this);
-        this.damageSyncHelper    = new DamageSyncHelper(this);
+        this.idHelper            = new IDHelper(basePlaceOnly);
+        this.weaknessHelper      = new WeaknessHelper(antiWeakness, cooldown);
+        this.antiTotemHelper     = new AntiTotemHelper(totemHealth);
+        this.damageSyncHelper    = new DamageSyncHelper(
+            Bus.EVENT_BUS, discreteSync, syncDelay, dangerSync);
         this.extrapolationHelper = new ExtrapolationHelper(this);
-        this.damageHelper        = new DamageHelper(this);
+        this.damageHelper        = new DamageHelper(
+            this, extrapolationHelper, terrainCalc, extrapol,
+            bExtrapol, selfExtrapolation, obbyTerrain);
         this.forceHelper         = new ForceHelper(this);
-        this.rotationCanceller   = new RotationCanceller(this);
+        this.rotationCanceller   = new RotationCanceller(this, maxCancel);
+        this.threadHelper        = new ThreadHelper(
+            this, multiThread, mainThreadThreads, threadDelay,
+            rotationThread, rotate);
+        this.serverTimeHelper    = new ServerTimeHelper(
+            this, rotate, placeSwing, antiFeetPlace, newVer, feetBuffer);
+        this.crystalRender       = new FakeCrystalRender(simulatePlace);
+        this.bbBlockingHelper    = new HelperEntityBlocksPlace(this);
 
         // --- リスナー登録 ---
-        register(new ListenerGameLoop(this));
-        register(new ListenerMotion(this));
-        register(new ListenerEntity(this));
-        register(new ListenerSpawn(this));
-        register(new ListenerDestroyEntities(this));
-        register(new ListenerExplosion(this));
-        register(new ListenerBlockChange(this));
-        register(new ListenerBlockMulti(this));
-        register(new ListenerCPlayers(this));
-        register(new ListenerDestroyBlock(this));
-        // [NEW] スワップパケット監視リスナー
-        register(new ListenerPacketSendSwap(this));
+        this.listeners.add(new ListenerGameLoop(this));
+        this.listeners.add(new ListenerMotion(this));
+        this.listeners.add(new ListenerEntity(this));
+        this.listeners.add(new ListenerSpawnObject(this));
+        this.listeners.add(new ListenerDestroyEntities(this));
+        this.listeners.add(new ListenerExplosion(this));
+        this.listeners.add(new ListenerBlockChange(this));
+        this.listeners.add(new ListenerBlockMulti(this));
+        this.listeners.add(new ListenerCPlayers(this));
+        this.listeners.add(new ListenerDestroyBlock(this));
+        this.listeners.add(new ListenerPacketSendSwap(this));
+        this.listeners.add(new ListenerRender(this));
+        this.listeners.add(new ListenerRenderEntities(this));
+        this.listeners.add(new ListenerTick(this));
+        this.listeners.add(new ListenerNoMotion(this));
+        this.listeners.add(new ListenerKeyboard(this));
+        this.listeners.add(new ListenerUseEntity(this));
+        this.listeners.add(new ListenerPostPlace(this));
+        this.listeners.add(new ListenerPosLook(this));
+        this.listeners.add(new ListenerWorldClient(this));
 
         // --- GUI ページビルダー ---
-        PageBuilder.of(this, pages)
-            .add(ACPages.Place,
+        new PageBuilder<>(this, pages)
+            .addPage(p -> p == ACPages.Place,
                  place, targetMode, placeRange, placeTrace, minDamage,
                  placeDelay, maxSelfPlace, multiPlace, slowPlaceDmg,
                  slowPlaceDelay, override, newVer, newVerEntities, placeSwing,
@@ -1005,84 +1099,78 @@ public class AutoCrystal extends Module
                  rayBypassFacePlace, rayBypassFallback, bypassTicks,
                  rbYaw, rbPitch, bypassRotationTime, ignoreNonFull,
                  efficientPlacements, simulatePlace)
-            .add(ACPages.Break,
+            .addPage(p -> p == ACPages.Break,
                  attackMode, attack, breakRange, breakDelay, breakTrace,
                  minBreakDamage, maxSelfBreak, slowBreakDamage, slowBreakDelay,
                  instant, asyncCalc, alwaysCalc, ncpRange, placeBreakRange,
                  smartTicks, negativeTicks, smartBreakTrace, negativeBreakTrace,
                  packets, overrideBreak, antiWeakness, instantAntiWeak,
                  efficient, manually, manualDelay, breakSwing)
-            .add(ACPages.Rotation,
+            .addPage(p -> p == ACPages.Rotate,
                  rotate, rotateMode, smoothSpeed, endRotations, angle,
                  placeAngle, height, placeHeight, rotationTicks,
                  focusRotations, focusAngleCalc, focusExponent, focusDiff,
                  rotationExponent, minRotDiff, existed, pingExisted)
-            .add(ACPages.Misc,
-                 targetRange, pbTrace, range, suicide, multiTask,
-                 multiPlaceCalc, multiPlaceMinDmg, countDeadCrystals,
-                 countDeathTime, yCalc, dangerSpeed, dangerHealth,
-                 cooldown, placeCoolDown, antiFriendPop, antiFeetPlace,
-                 feetBuffer, stopWhenEating, stopWhenMining,
-                 dangerFacePlace, motionCalc,
-                 holdFacePlace, facePlace, minFaceDmg, armorPlace,
-                 pickAxeHold, antiNaked, fallBack, fallBackDiff, fallBackDmg,
-                 shield, shieldCount, shieldMinDamage, shieldSelfDamage,
-                 shieldDelay, shieldRange, shieldPrioritizeHealth)
-            .add(ACPages.Switch,
+            .addPage(p -> p == ACPages.Misc,
+                 targetRange, pbTrace, range, suicide, shield, shieldCount,
+                 shieldMinDamage, shieldSelfDamage, shieldDelay, shieldRange,
+                 shieldPrioritizeHealth, multiTask, multiPlaceCalc,
+                 multiPlaceMinDmg, countDeadCrystals, countDeathTime, yCalc,
+                 dangerSpeed, dangerHealth, cooldown, placeCoolDown,
+                 antiFriendPop, antiFeetPlace, feetBuffer, stopWhenEating,
+                 stopWhenMining, dangerFacePlace, motionCalc)
+            .addPage(p -> p == ACPages.FacePlace,
+                 holdFacePlace, facePlace, minFaceDmg, armorPlace, pickAxeHold,
+                 antiNaked, fallBack, fallBackDiff, fallBackDmg)
+            .addPage(p -> p == ACPages.Switch,
                  autoSwitch, mainHand, switchBind, switchBack, useAsOffhand,
                  instantOffhand, pingBypass, switchMessage, swing, placeHand,
-                 cooldownBypass, obsidianBypass, antiWeaknessBypass,
-                 mineBypass, obbyHand,
-                 // [NEW]
-                 await, yieldProtection, swapDelay, swapWaitFull)
-            .add(ACPages.Render,
+                 cooldownBypass, obsidianBypass, antiWeaknessBypass, mineBypass,
+                 obbyHand, await, yieldProtection, swapDelay, swapWaitFull)
+            .addPage(p -> p == ACPages.Render,
                  render, renderTime, box, boxColor, outLine, indicatorColor,
                  fade, fadeComp, fadeTime, realtime, slide, smoothSlide,
                  slideTime, zoom, zoomTime, zoomOffset, multiZoom,
                  renderExtrapolation, renderDamage, renderMode,
                  arrayInfo, showTarget, showDelay, showSpeed, showCPS)
-            .add(ACPages.SetDead,
+            .addPage(p -> p == ACPages.SetDead,
                  setDead, instantSetDead, pseudoSetDead, simulateExplosion,
                  soundRemove, useSafeDeathTime, safeDeathTime, deathTime)
-            .add(ACPages.Obsidian,
+            .addPage(p -> p == ACPages.Obsidian,
                  obsidian, basePlaceOnly, obbySwitch, obbyDelay, obbyCalc,
                  helpingBlocks, obbyMinDmg, terrainCalc, obbySafety, obbyTrace,
                  obbyTerrain, obbyPreSelf, fastObby, maxDiff, maxDmgDiff,
                  setState, obbySwing, obbyFallback, obbyRotate)
-            .add(ACPages.Liquids,
+            .addPage(p -> p == ACPages.Liquids,
                  interact, inside, lava, water, liquidObby, liquidRayTrace,
                  liqDelay, liqRotate, pickaxeOnly, interruptSpeedmine, setAir,
                  absorb, requireOnGround, ignoreLavaItems, sponges)
-            .add(ACPages.AntiTotem,
+            .addPage(p -> p == ACPages.AntiTotem,
                  antiTotem, totemHealth, minTotemOffset, maxTotemOffset,
                  popDamage, totemSync, forceAntiTotem, forceSlow, syncForce,
                  dangerForce, forcePlaceConfirm, forceBreakConfirm, attempts)
-            .add(ACPages.DamageSync,
+            .addPage(p -> p == ACPages.DamageSync,
                  damageSync, preSynCheck, discreteSync, dangerSync,
                  placeConfirm, breakConfirm, syncDelay, surroundSync)
-            .add(ACPages.Extrapolation,
+            .addPage(p -> p == ACPages.Extrapolation,
                  extrapol, bExtrapol, blockExtrapol, blockExtraMode,
                  doubleExtraCheck, avgPlaceDamage, placeExtraWeight,
                  placeNormalWeight, avgBreakExtra, breakExtraWeight,
                  breakNormalWeight, gravityExtrapolation, gravityFactor,
                  yPlusFactor, yMinusFactor, selfExtrapolation)
-            .add(ACPages.Predict,
+            .addPage(p -> p == ACPages.GodModule,
                  idPredict, idOffset, idDelay, idPackets,
                  godAntiTotem, holdingCheck, toolCheck, godSwing)
-            .add(ACPages.Efficiency,
+            .addPage(p -> p == ACPages.Development,
                  preCalc, preCalcExtra, preCalcDamage)
-            .add(ACPages.Thread,
+            .addPage(p -> p == ACPages.MultiThread,
                  multiThread, rotationThread, partial, maxCancel, timeOut,
                  threadDelay, pullBasedDelay, blockDestroyThread,
                  explosionThread, soundThread, entityThread, gameloop,
                  spawnThread, destroyThread, serverThread, asyncServerThread,
                  earlyFeetThread, lateBreakThread, motionThread,
                  blockChangeThread, priority, smartPost, clearPost, spectator)
-            .build();
-
-        Visibilities.of(this)
-            // --- 既存 visibility ルール (省略なし・元コードと同じ) ---
-            .build();
+            .register(Visibilities.VISIBILITY_MANAGER);
     }
 
     // =====================================================================
@@ -1108,12 +1196,7 @@ public class AutoCrystal extends Module
         switching      = false;
         noGod          = false;
 
-        sequentialHelper.onEnable();
-        weaknessHelper.onEnable();
-        antiTotemHelper.onEnable();
-        damageSyncHelper.onEnable();
-        extrapolationHelper.onEnable();
-        rotationCanceller.onEnable();
+        weaknessHelper.updateWeakness();
     }
 
     @Override
@@ -1127,13 +1210,14 @@ public class AutoCrystal extends Module
         focus     = null;
         switching = false;
         noGod     = false;
+        isSpoofing = false;
+        bombPos    = null;
+        slidePos   = null;
+        damage     = "";
 
-        sequentialHelper.onDisable();
-        weaknessHelper.onDisable();
-        antiTotemHelper.onDisable();
-        damageSyncHelper.onDisable();
-        extrapolationHelper.onDisable();
-        rotationCanceller.onDisable();
+        // ヘルパーリセット
+        threadHelper.reset();
+        crystalRender.clear();
 
         // [NEW] トラッカーのリセット
         positionCache.clear();
@@ -1190,29 +1274,62 @@ public class AutoCrystal extends Module
     }
 
     /** クリスタルを ESP ターゲットとしてセット */
+    private volatile Entity crystal;
+
     public void setCrystal(Entity entity)
     {
-        // 既存実装と同一: 描画ヘルパーに委譲
-        rotationHelper.setCrystal(entity);
+        this.crystal = entity;
     }
 
-    /** 描画座標とダメージ値をレンダラーにセット */
-    public void setRenderPos(BlockPos pos, float damage)
+    /** 現在のクリスタルターゲットを取得 */
+    public Entity getCrystal()
     {
-        rotationHelper.setRenderPos(pos, damage);
+        return crystal;
+    }
+
+    /** 描画座標とダメージ値をセット */
+    public void setRenderPos(BlockPos pos, float dmg)
+    {
+        if (slide.getValue())
+        {
+            BlockPos prev = this.renderPos;
+            if (prev != null && !prev.equals(pos))
+            {
+                slidePos = prev;
+                slideTimer.reset();
+            }
+        }
+
+        if (zoom.getValue())
+        {
+            BlockPos prev = this.renderPos;
+            if (prev == null || !prev.equals(pos))
+            {
+                zoomTimer.reset();
+            }
+        }
+
+        this.renderPos = pos;
+        this.renderDamageValue = dmg;
+        this.damage = String.format("%.1f", dmg);
     }
 
     /** RayTrace バイパス座標をセット */
     public void setBypassPos(BlockPos pos)
     {
-        rotationHelper.setBypassPos(pos);
+        this.bypassPos = pos;
     }
 
     /** ターゲットプレイヤーをセット */
     public void setTarget(EntityPlayer player)
     {
         antiTotemHelper.setTarget(player);
-        damageSyncHelper.setTarget(player);
+    }
+
+    /** 現在のターゲットプレイヤーを取得 */
+    public EntityPlayer getTarget()
+    {
+        return antiTotemHelper.getTarget();
     }
 
     /** PingBypass が有効かどうか */
@@ -1238,7 +1355,8 @@ public class AutoCrystal extends Module
     /** プレイヤーがブロックを掘っているか */
     public boolean isMining()
     {
-        return MineUtil.isMining();
+        return mc.playerController != null
+            && mc.playerController.getIsHittingBlock();
     }
 
     /** ローテーションチェックを省略するか判定 */
@@ -1294,7 +1412,6 @@ public class AutoCrystal extends Module
     // ArrayInfo (HUD 表示用)
     // =====================================================================
 
-    @Override
     public String getArrayInfo()
     {
         if (!arrayInfo.getValue())
@@ -1350,7 +1467,7 @@ public class AutoCrystal extends Module
         int delay = threadDelay.getValue();
         if (delay <= 0)
         {
-            ThreadUtil.submit(EXECUTOR, runnable);
+            EXECUTOR.submit(runnable);
         }
         else
         {
@@ -1380,6 +1497,58 @@ public class AutoCrystal extends Module
         }
 
         return false;
+    }
+
+    // =====================================================================
+    // 不足していたメソッド (リスナーから参照)
+    // =====================================================================
+
+    /** レンダリング用に保存された BlockPos */
+    private volatile BlockPos renderPos;
+    private volatile float    renderDamageValue;
+    private volatile BlockPos bypassPos;
+
+    /** レンダリング対象座標を取得 */
+    public BlockPos getRenderPos()
+    {
+        return renderPos;
+    }
+
+    /** Bypass座標を取得 */
+    public BlockPos getBypassPos()
+    {
+        return bypassPos;
+    }
+
+
+
+
+    /** ワールド変更時にリセット (ListenerWorldClient が呼ぶ) */
+    public void reset()
+    {
+        placed.clear();
+        post.clear();
+        rotation   = null;
+        focus      = null;
+        switching  = false;
+        noGod      = false;
+        isSpoofing = false;
+        bombPos    = null;
+        slidePos   = null;
+        damage     = "";
+        renderPos  = null;
+        bypassPos  = null;
+        threadHelper.reset();
+        crystalRender.clear();
+        positionCache.clear();
+        swapStateTracker.clear();
+        rttTracker.clear();
+    }
+
+    /** Executor のチェック (ListenerTick が呼ぶ) */
+    public void checkExecutor()
+    {
+        // Executor の状態チェック用スタブ
     }
 
 } // end class AutoCrystal

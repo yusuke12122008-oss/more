@@ -892,8 +892,7 @@ public abstract class AbstractCalculation<T extends CrystalData>
         if (firstData != null && firstData.isRaytraceBypass())
         {
             module.setRenderPos(firstData.getPos(),
-                                MathUtil.round(firstData.getMaxDamage(), 1)
-                                    + " (RB)");
+                                MathUtil.round(firstData.getMaxDamage(), 1));
             module.setBypassPos(firstData.getPos());
             return false;
         }
