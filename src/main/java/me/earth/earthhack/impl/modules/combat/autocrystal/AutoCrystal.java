@@ -15,6 +15,9 @@ import me.earth.earthhack.impl.modules.Caches;
 import me.earth.earthhack.impl.modules.client.pingbypass.PingBypassModule;
 import me.earth.earthhack.impl.modules.client.settings.SettingsModule;
 import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.*;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.FakeCrystalRender;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.ServerTimeHelper;
+import me.earth.earthhack.impl.modules.combat.autocrystal.helpers.ThreadHelper;
 import me.earth.earthhack.impl.modules.combat.autocrystal.modes.*;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.CrystalTimeStamp;
 import me.earth.earthhack.impl.modules.combat.autocrystal.util.RotationFunction;
@@ -820,8 +823,8 @@ public class AutoCrystal extends Module
     protected final Setting<RotationThread> rotationThread =
             register(new EnumSetting<>("RotationThread", RotationThread.Predict))
                 .setComplexity(Complexity.Expert);
-    protected final Setting<Boolean> partial =
-            register(new BooleanSetting("Partial", false))
+    protected final Setting<Float> partial =
+            register(new NumberSetting<>("Partial", 0.0f, 0.0f, 1.0f))
                 .setComplexity(Complexity.Expert);
     protected final Setting<Integer> maxCancel =
             register(new NumberSetting<>("MaxCancel", 200, 0, 500))
@@ -887,6 +890,29 @@ public class AutoCrystal extends Module
             register(new BooleanSetting("Spectator", false))
                 .setComplexity(Complexity.Expert);
 
+    /* ---------------- Server-Thread / ServerTime Settings -------------- */
+    protected final Setting<Boolean> mainThreadThreads =
+            register(new BooleanSetting("MainThreadThreads", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> tickThreshold =
+            register(new NumberSetting<>("TickThreshold", 0, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> preSpawn =
+            register(new NumberSetting<>("PreSpawn", 0, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> maxEarlyThread =
+            register(new NumberSetting<>("MaxEarlyThread", 10, 0, 50))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> spawnThreadWhenAttacked =
+            register(new BooleanSetting("SpawnThreadWhenAttacked", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Boolean> alwaysBomb =
+            register(new BooleanSetting("AlwaysBomb", false))
+                .setComplexity(Complexity.Expert);
+    protected final Setting<Integer> removeTime =
+            register(new NumberSetting<>("RemoveTime", 2000, 0, 10000))
+                .setComplexity(Complexity.Expert);
+
     // =====================================================================
     // [NEW] スワップ / RTT 関連設定
     // =====================================================================
@@ -948,13 +974,23 @@ public class AutoCrystal extends Module
     public  final DamageHelper           damageHelper;
     public  final ForceHelper            forceHelper;
     public  final RotationCanceller      rotationCanceller;
+    public  final ThreadHelper           threadHelper;
+    public  final ServerTimeHelper       serverTimeHelper;
+    public  final FakeCrystalRender      crystalRender;
 
     /* --- 状態変数 --- */
     public  volatile RotationFunction rotation;
     public  volatile Entity  focus;
     public  volatile boolean switching;
     public  volatile boolean noGod;
+    public  volatile boolean isSpoofing;
+    public  volatile BlockPos bombPos;
+    public  volatile BlockPos slidePos;
+    public  volatile String   damage = "";
     public  final AtomicInteger motionID = new AtomicInteger();
+    public  final StopWatch     pullTimer  = new StopWatch();
+    public  final StopWatch     slideTimer = new StopWatch();
+    public  final StopWatch     zoomTimer  = new StopWatch();
 
     // =====================================================================
     // コンストラクタ
@@ -979,12 +1015,18 @@ public class AutoCrystal extends Module
         this.damageHelper        = new DamageHelper(this);
         this.forceHelper         = new ForceHelper(this);
         this.rotationCanceller   = new RotationCanceller(this);
+        this.threadHelper        = new ThreadHelper(
+            this, multiThread, mainThreadThreads, threadDelay,
+            rotationThread, rotate);
+        this.serverTimeHelper    = new ServerTimeHelper(
+            this, rotate, placeSwing, antiFeetPlace, newVer, feetBuffer);
+        this.crystalRender       = new FakeCrystalRender(simulatePlace);
 
         // --- リスナー登録 ---
         register(new ListenerGameLoop(this));
         register(new ListenerMotion(this));
         register(new ListenerEntity(this));
-        register(new ListenerSpawn(this));
+        register(new ListenerSpawnObject(this));
         register(new ListenerDestroyEntities(this));
         register(new ListenerExplosion(this));
         register(new ListenerBlockChange(this));
@@ -993,6 +1035,16 @@ public class AutoCrystal extends Module
         register(new ListenerDestroyBlock(this));
         // [NEW] スワップパケット監視リスナー
         register(new ListenerPacketSendSwap(this));
+        // --- 追加リスナー ---
+        register(new ListenerRender(this));
+        register(new ListenerRenderEntities(this));
+        register(new ListenerTick(this));
+        register(new ListenerNoMotion(this));
+        register(new ListenerKeyboard(this));
+        register(new ListenerUseEntity(this));
+        register(new ListenerPostPlace(this));
+        register(new ListenerPosLook(this));
+        register(new ListenerWorldClient(this));
 
         // --- GUI ページビルダー ---
         PageBuilder.of(this, pages)
@@ -1127,6 +1179,10 @@ public class AutoCrystal extends Module
         focus     = null;
         switching = false;
         noGod     = false;
+        isSpoofing = false;
+        bombPos    = null;
+        slidePos   = null;
+        damage     = "";
 
         sequentialHelper.onDisable();
         weaknessHelper.onDisable();
@@ -1134,6 +1190,8 @@ public class AutoCrystal extends Module
         damageSyncHelper.onDisable();
         extrapolationHelper.onDisable();
         rotationCanceller.onDisable();
+        threadHelper.reset();
+        crystalRender.clear();
 
         // [NEW] トラッカーのリセット
         positionCache.clear();
@@ -1192,20 +1250,40 @@ public class AutoCrystal extends Module
     /** クリスタルを ESP ターゲットとしてセット */
     public void setCrystal(Entity entity)
     {
-        // 既存実装と同一: 描画ヘルパーに委譲
-        rotationHelper.setCrystal(entity);
+        // 現在は特に使用しないスタブ
     }
 
-    /** 描画座標とダメージ値をレンダラーにセット */
-    public void setRenderPos(BlockPos pos, float damage)
+    /** 描画座標とダメージ値をセット */
+    public void setRenderPos(BlockPos pos, float dmg)
     {
-        rotationHelper.setRenderPos(pos, damage);
+        if (slide.getValue())
+        {
+            BlockPos prev = this.renderPos;
+            if (prev != null && !prev.equals(pos))
+            {
+                slidePos = prev;
+                slideTimer.reset();
+            }
+        }
+
+        if (zoom.getValue())
+        {
+            BlockPos prev = this.renderPos;
+            if (prev == null || !prev.equals(pos))
+            {
+                zoomTimer.reset();
+            }
+        }
+
+        this.renderPos = pos;
+        this.renderDamageValue = dmg;
+        this.damage = String.format("%.1f", dmg);
     }
 
     /** RayTrace バイパス座標をセット */
     public void setBypassPos(BlockPos pos)
     {
-        rotationHelper.setBypassPos(pos);
+        this.bypassPos = pos;
     }
 
     /** ターゲットプレイヤーをセット */
@@ -1380,6 +1458,61 @@ public class AutoCrystal extends Module
         }
 
         return false;
+    }
+
+    // =====================================================================
+    // 不足していたメソッド (リスナーから参照)
+    // =====================================================================
+
+    /** レンダリング用に保存された BlockPos */
+    private volatile BlockPos renderPos;
+    private volatile float    renderDamageValue;
+    private volatile BlockPos bypassPos;
+
+    /** レンダリング対象座標を取得 */
+    public BlockPos getRenderPos()
+    {
+        return renderPos;
+    }
+
+    /** Bypass座標を取得 */
+    public BlockPos getBypassPos()
+    {
+        return bypassPos;
+    }
+
+    /** ターゲットを取得 (HelperRotation が参照) */
+    public EntityPlayer getTarget()
+    {
+        return antiTotemHelper.getTarget();
+    }
+
+    /** ワールド変更時にリセット (ListenerWorldClient が呼ぶ) */
+    public void reset()
+    {
+        placed.clear();
+        post.clear();
+        rotation   = null;
+        focus      = null;
+        switching  = false;
+        noGod      = false;
+        isSpoofing = false;
+        bombPos    = null;
+        slidePos   = null;
+        damage     = "";
+        renderPos  = null;
+        bypassPos  = null;
+        threadHelper.reset();
+        crystalRender.clear();
+        positionCache.clear();
+        swapStateTracker.clear();
+        rttTracker.clear();
+    }
+
+    /** Executor のチェック (ListenerTick が呼ぶ) */
+    public void checkExecutor()
+    {
+        // Executor の状態チェック用スタブ
     }
 
 } // end class AutoCrystal
