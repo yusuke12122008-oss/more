@@ -12,6 +12,7 @@ import me.earth.earthhack.impl.core.ducks.entity.IEntity;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.modules.combat.autocrystal.CrystalPositionCache;
 import me.earth.earthhack.impl.modules.combat.autocrystal.SwapStateTracker;
+import me.earth.earthhack.impl.util.client.SimpleData;
 import me.earth.earthhack.impl.util.math.GuardTimer;
 import me.earth.earthhack.impl.util.minecraft.DamageUtil;
 import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
@@ -98,7 +99,8 @@ public class CrystalAura extends Module
         this.listeners.add(new ListenerSpawnObject(this));
         this.listeners.add(new ListenerDestroyEntities(this));
         this.listeners.add(new ListenerSound(this));
-        this.setData(new CrystalAuraData(this));
+        this.setData(new SimpleData(this,
+            "Automatically places and breaks end crystals."));
     }
 
     @Override

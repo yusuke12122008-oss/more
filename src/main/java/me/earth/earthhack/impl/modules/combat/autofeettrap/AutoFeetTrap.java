@@ -8,6 +8,7 @@ import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.impl.managers.Managers;
 import me.earth.earthhack.impl.util.client.ModuleUtil;
+import me.earth.earthhack.impl.util.client.SimpleData;
 import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
 import me.earth.earthhack.impl.util.thread.Locks;
 import net.minecraft.block.Block;
@@ -76,7 +77,9 @@ public class AutoFeetTrap extends Module
     {
         super("AutoFeetTrap", Category.Combat);
         this.listeners.add(new ListenerTick(this));
-        this.setData(new AutoFeetTrapData(this));
+        this.setData(new SimpleData(this,
+            "Places blocks around your feet like surround for NCP-friendly trapping.",
+            0xff8fdaff));
     }
 
     @Override
