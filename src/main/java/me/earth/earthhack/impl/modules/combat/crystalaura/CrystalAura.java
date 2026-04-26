@@ -43,6 +43,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CrystalAura extends Module
 {
@@ -95,6 +96,7 @@ public class CrystalAura extends Module
     private final CrystalPositionCache positionCache = new CrystalPositionCache();
     private final SwapStateTracker swapStateTracker = new SwapStateTracker();
     private final Object stateLock = new Object();
+    private final AtomicBoolean calculating = new AtomicBoolean(false);
 
     private EntityPlayer target;
     private BlockPos expecting;
@@ -111,19 +113,39 @@ public class CrystalAura extends Module
             {
                 if (multiThread.getValue())
                 {
+                    if (!calculating.compareAndSet(false, true))
+                    {
+                        return;
+                    }
+
                     Managers.THREAD.submitRunnable(() ->
                     {
-                        synchronized (stateLock)
+                        try
                         {
-                            runAura();
+                            synchronized (stateLock)
+                            {
+                                runAura();
+                            }
+                        }
+                        finally
+                        {
+                            calculating.set(false);
                         }
                     });
                 }
                 else
                 {
+                    calculating.set(true);
                     synchronized (stateLock)
                     {
-                        runAura();
+                        try
+                        {
+                            runAura();
+                        }
+                        finally
+                        {
+                            calculating.set(false);
+                        }
                     }
                 }
             }
@@ -134,11 +156,16 @@ public class CrystalAura extends Module
             @Override
             public void invoke(KeyboardEvent event)
             {
-                if (event.getEventState()
-                    && event.getKey() == switchBind.getValue().getKey()
+                int bind = switchBind.getValue().getKey();
+                if (bind != -1
+                    && event.getEventState()
+                    && event.getKey() == bind
                     && autoSwitch.getValue() == AutoSwitchMode.Bind)
                 {
-                    switching = !switching;
+                    synchronized (stateLock)
+                    {
+                        switching = !switching;
+                    }
                 }
             }
         });
@@ -251,6 +278,7 @@ public class CrystalAura extends Module
             swapStateTracker.clear();
             clearSequence();
             switching = false;
+            calculating.set(false);
         }
     }
 
