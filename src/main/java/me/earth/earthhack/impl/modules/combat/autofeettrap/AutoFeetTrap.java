@@ -1,6 +1,6 @@
 package me.earth.earthhack.impl.modules.combat.autofeettrap;
 
-import me.earth.earthhack.api.event.events.Stage;
+import me.earth.earthhack.api.module.Module;
 import me.earth.earthhack.api.module.util.Category;
 import me.earth.earthhack.api.setting.Setting;
 import me.earth.earthhack.api.setting.settings.BooleanSetting;
@@ -8,18 +8,15 @@ import me.earth.earthhack.api.setting.settings.ColorSetting;
 import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.impl.event.events.misc.CollisionEvent;
-import me.earth.earthhack.impl.event.events.network.MotionUpdateEvent;
+import me.earth.earthhack.impl.event.events.misc.TickEvent;
 import me.earth.earthhack.impl.event.events.network.PacketEvent;
 import me.earth.earthhack.impl.event.events.render.Render3DEvent;
 import me.earth.earthhack.impl.event.listeners.ModuleListener;
 import me.earth.earthhack.impl.managers.Managers;
+import me.earth.earthhack.impl.modules.combat.util.CombatCoordinator;
 import me.earth.earthhack.impl.util.client.ModuleUtil;
 import me.earth.earthhack.impl.util.client.SimpleData;
-import me.earth.earthhack.impl.util.helpers.blocks.ObbyModule;
-import me.earth.earthhack.impl.util.helpers.blocks.modes.Rotate;
 import me.earth.earthhack.impl.util.minecraft.InventoryUtil;
-import me.earth.earthhack.impl.util.minecraft.blocks.BlockUtil;
-import me.earth.earthhack.impl.util.minecraft.blocks.BlockingType;
 import me.earth.earthhack.impl.util.minecraft.entity.EntityUtil;
 import me.earth.earthhack.impl.util.network.PacketUtil;
 import me.earth.earthhack.impl.util.render.Interpolation;
@@ -30,16 +27,19 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityEnderCrystal;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.play.client.CPacketAnimation;
+import net.minecraft.network.play.client.CPacketHeldItemChange;
+import net.minecraft.network.play.client.CPacketPlayer;
 import net.minecraft.network.play.client.CPacketUseEntity;
 import net.minecraft.network.play.server.SPacketBlockChange;
-import net.minecraft.network.play.server.SPacketExplosion;
 import net.minecraft.network.play.server.SPacketMultiBlockChange;
 import net.minecraft.network.play.server.SPacketSpawnObject;
+import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -55,13 +55,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AutoFeetTrap extends ObbyModule
+public class AutoFeetTrap extends Module
 {
     protected final Setting<Mode> mode =
         register(new EnumSetting<>("Mode", Mode.DYNAMIC));
 
     protected final Setting<BlockMode> blockMode =
         register(new EnumSetting<>("BlockMode", BlockMode.OBSIDIAN_ECHEST));
+
+    protected final Setting<Integer> blocksPerTick =
+        register(new NumberSetting<>("BlocksPerTick", 4, 1, 10));
+
+    protected final Setting<Integer> delayTicks =
+        register(new NumberSetting<>("DelayTicks", 0, 0, 10));
 
     protected final Setting<Float> placeRange =
         register(new NumberSetting<>("PlaceRange", 5.5f, 1.0f, 6.0f));
@@ -90,8 +96,14 @@ public class AutoFeetTrap extends ObbyModule
     protected final Setting<Boolean> support =
         register(new BooleanSetting("Support", true));
 
+    protected final Setting<Boolean> rotate =
+        register(new BooleanSetting("Rotate", true));
+
     protected final Setting<Boolean> centerPlayer =
         register(new BooleanSetting("CenterPlayer", true));
+
+    protected final Setting<Boolean> packetPlace =
+        register(new BooleanSetting("PacketPlace", true));
 
     protected final Setting<Boolean> strictDirection =
         register(new BooleanSetting("StrictDirection", false));
@@ -108,6 +120,9 @@ public class AutoFeetTrap extends ObbyModule
     protected final Setting<Boolean> predict =
         register(new BooleanSetting("Predict", true));
 
+    protected final Setting<Integer> breakDelay =
+        register(new NumberSetting<>("BreakDelay", 0, 0, 1000));
+
     protected final Setting<Float> breakRange =
         register(new NumberSetting<>("BreakRange", 6.0f, 1.0f, 6.0f));
 
@@ -117,11 +132,26 @@ public class AutoFeetTrap extends ObbyModule
     protected final Setting<Integer> placedTimeout =
         register(new NumberSetting<>("PlacedTimeout", 250, 50, 1000));
 
-    protected final Setting<Integer> blockedTimeout =
-        register(new NumberSetting<>("BlockedTimeout", 500, 50, 2000));
+    protected final Setting<Boolean> cooperate =
+        register(new BooleanSetting("Cooperate", true));
+
+    protected final Setting<Boolean> sharedAttacks =
+        register(new BooleanSetting("SharedAttacks", true));
+
+    protected final Setting<Boolean> avoidCrystalTargets =
+        register(new BooleanSetting("AvoidCrystalTargets", false));
+
+    protected final Setting<HandSwing> handSwing =
+        register(new EnumSetting<>("HandSwing", HandSwing.PACKET));
+
+    protected final Setting<SwingHand> swingHand =
+        register(new EnumSetting<>("SwingHand", SwingHand.AUTO));
 
     protected final Setting<Boolean> render =
         register(new BooleanSetting("Render", true));
+
+    protected final Setting<RenderMode> renderMode =
+        register(new EnumSetting<>("RenderMode", RenderMode.FADE));
 
     protected final Setting<Integer> fadeTime =
         register(new NumberSetting<>("FadeTime", 300, 0, 2000));
@@ -141,65 +171,59 @@ public class AutoFeetTrap extends ObbyModule
     };
 
     protected final Map<BlockPos, Long> placed = new ConcurrentHashMap<>();
-    protected final Map<BlockPos, Long> confirmed = new ConcurrentHashMap<>();
-    protected final Map<BlockPos, Long> recentlyBlocked = new ConcurrentHashMap<>();
     protected final Map<BlockPos, Long> renderPositions = new ConcurrentHashMap<>();
     protected final Map<Integer, Long> attackedCrystals = new ConcurrentHashMap<>();
 
+    protected int tickTimer;
     protected BlockPos startPos;
-    protected Set<BlockPos> targets = new LinkedHashSet<>();
-    protected boolean centered;
+    protected long lastBreak;
 
     public AutoFeetTrap()
     {
         super("AutoFeetTrap", Category.Combat);
 
-        this.listeners.add(new ListenerMotion(this));
+        this.listeners.add(new ListenerTick(this));
         this.listeners.add(new ListenerSpawnObject(this));
         this.listeners.add(new ListenerBlockChange(this));
         this.listeners.add(new ListenerMultiBlockChange(this));
-        this.listeners.add(new ListenerExplosion(this));
         this.listeners.add(new ListenerCollision(this));
         this.listeners.add(new ListenerRender(this));
 
         this.setData(new SimpleData(this,
-            "Feet surround with Dynamic/Adaptive logic, ObbyModule placing, Break, Predict, OverPlace, StrictDirection fix and Render.",
+            "Places blocks around your feet with Dynamic/Adaptive logic, Break, Predict, OverPlace, StrictDirection fix and AutoCrystal cooperation.",
             (int) 0xff8fdaffL));
     }
 
     @Override
     protected void onEnable()
     {
-        super.onEnable();
-
+        tickTimer = 0;
+        lastBreak = 0L;
         placed.clear();
-        confirmed.clear();
-        recentlyBlocked.clear();
         renderPositions.clear();
         attackedCrystals.clear();
-        targets.clear();
-
-        centered = false;
 
         if (mc.player != null)
         {
             startPos = getPlayerPos();
         }
+
+        CombatCoordinator.setFeetTrapActive(true);
     }
 
     @Override
     protected void onDisable()
     {
+        tickTimer = 0;
+        startPos = null;
         placed.clear();
-        confirmed.clear();
-        recentlyBlocked.clear();
         renderPositions.clear();
         attackedCrystals.clear();
-        targets.clear();
-        startPos = null;
+
+        CombatCoordinator.setFeetTrapActive(false);
     }
 
-    protected void onMotionPre(MotionUpdateEvent event)
+    protected void onTick()
     {
         if (mc.player == null || mc.world == null)
         {
@@ -207,10 +231,6 @@ public class AutoFeetTrap extends ObbyModule
         }
 
         cleanCaches();
-
-        rotations = null;
-        attacking = null;
-        blocksPlaced = 0;
 
         if (shouldDisable())
         {
@@ -228,232 +248,52 @@ public class AutoFeetTrap extends ObbyModule
             return;
         }
 
+        if (tickTimer++ < delayTicks.getValue())
+        {
+            return;
+        }
+
+        tickTimer = 0;
+
         centerPlayerIfNeeded();
 
-        slot = findBlockInHotbar();
+        int slot = findBlockInHotbar();
+
         if (slot == -1)
         {
             ModuleUtil.disableRed(this, "Disabled, no valid hotbar block.");
             return;
         }
 
-        targets = new LinkedHashSet<>(getSurroundPositions(getPlayerPos()));
-        placed.keySet().retainAll(targets);
+        List<BlockPos> targets = getSurroundPositions(getPlayerPos());
+
+        if (cooperate.getValue())
+        {
+            CombatCoordinator.updateFeetTargets(new LinkedHashSet<>(targets));
+            CombatCoordinator.setFeetTrapPlacing(!targets.isEmpty());
+        }
 
         if (targets.isEmpty())
         {
+            if (cooperate.getValue())
+            {
+                CombatCoordinator.setFeetTrapPlacing(false);
+            }
+
             return;
         }
 
-        placeCrystalBlockingTargetFirst();
-
-        for (BlockPos pos : targets)
+        if (breakCrystals.getValue())
         {
-            if (blocksPlaced >= blocks.getValue())
-            {
-                break;
-            }
-
-            if (shouldSkipPlaced(pos))
-            {
-                continue;
-            }
-
-            if (!canAttemptPlace(pos))
-            {
-                continue;
-            }
-
-            placeBlock(pos);
+            attackBlockingCrystals(targets);
         }
 
-        if (rotate.getValue() != Rotate.None && rotations != null)
+        placeBlocks(targets, slot);
+
+        if (cooperate.getValue())
         {
-            Managers.ROTATION.setBlocking(true);
-            event.setYaw(rotations[0]);
-            event.setPitch(rotations[1]);
+            CombatCoordinator.setFeetTrapPlacing(false);
         }
-    }
-
-    protected void onMotionPost()
-    {
-        if (mc.player == null || mc.world == null)
-        {
-            return;
-        }
-
-        Locks.acquire(Locks.PLACE_SWITCH_LOCK, this::execute);
-        Managers.ROTATION.setBlocking(false);
-    }
-
-    protected void placeCrystalBlockingTargetFirst()
-    {
-        if (!breakCrystals.getValue())
-        {
-            return;
-        }
-
-        for (BlockPos pos : targets)
-        {
-            AxisAlignedBB bb = new AxisAlignedBB(pos);
-
-            for (Entity entity : mc.world.getEntitiesWithinAABB(Entity.class, bb))
-            {
-                if (entity instanceof EntityEnderCrystal
-                    && !EntityUtil.isDead(entity)
-                    && mc.player.getDistanceSq(entity.posX, entity.posY, entity.posZ)
-                        <= square(breakRange.getValue()))
-                {
-                    if (!isRecentlyAttacked(entity.getEntityId()))
-                    {
-                        attacking = new CPacketUseEntity(entity);
-                        attackedCrystals.put(entity.getEntityId(), System.currentTimeMillis());
-                    }
-
-                    if (canAttemptPlace(pos))
-                    {
-                        placeBlock(pos);
-                    }
-
-                    return;
-                }
-            }
-        }
-    }
-
-    @Override
-    public boolean placeBlock(BlockPos pos)
-    {
-        int before = blocksPlaced;
-        boolean stop = super.placeBlock(pos);
-
-        if (blocksPlaced > before)
-        {
-            long now = System.currentTimeMillis();
-            placed.put(pos, now);
-            renderPositions.put(pos, now);
-        }
-
-        return stop;
-    }
-
-    @Override
-    public boolean entityCheck(BlockPos pos)
-    {
-        CPacketUseEntity attackPacket = null;
-
-        for (Entity entity : mc.world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(pos)))
-        {
-            if (entity == null
-                || EntityUtil.isDead(entity)
-                || !entity.preventEntitySpawning
-                || entity == mc.player)
-            {
-                continue;
-            }
-
-            if (entity instanceof EntityPlayer
-                && !BlockUtil.isBlocking(pos, (EntityPlayer) entity, blockingType.getValue()))
-            {
-                continue;
-            }
-
-            if (entity instanceof EntityEnderCrystal)
-            {
-                if (blockingType.getValue() == BlockingType.Crystals)
-                {
-                    continue;
-                }
-
-                if (breakCrystals.getValue()
-                    && overPlace.getValue()
-                    && attackTimer.passed(breakDelay.getValue())
-                    && Managers.SWITCH.getLastSwitch() >= cooldown.getValue()
-                    && mc.player.getDistanceSq(entity.posX, entity.posY, entity.posZ)
-                        <= square(breakRange.getValue()))
-                {
-                    if (!isRecentlyAttacked(entity.getEntityId()))
-                    {
-                        attackPacket = new CPacketUseEntity(entity);
-                        attackedCrystals.put(entity.getEntityId(), System.currentTimeMillis());
-                    }
-
-                    continue;
-                }
-            }
-
-            return false;
-        }
-
-        if (attackPacket != null)
-        {
-            attacking = attackPacket;
-        }
-
-        return true;
-    }
-
-    @Override
-    protected boolean shouldHelp(EnumFacing facing, BlockPos pos)
-    {
-        return facing == null || getPlaceData(pos) == null;
-    }
-
-    protected boolean canAttemptPlace(BlockPos pos)
-    {
-        if (mc.player == null || mc.world == null || pos == null)
-        {
-            return false;
-        }
-
-        if (mc.player.getDistanceSq(pos) > square(placeRange.getValue()))
-        {
-            return false;
-        }
-
-        if (!mc.world.getWorldBorder().contains(pos))
-        {
-            return false;
-        }
-
-        if (!mc.world.getBlockState(pos).getMaterial().isReplaceable())
-        {
-            return false;
-        }
-
-        if (mc.player.getEntityBoundingBox().intersects(new AxisAlignedBB(pos)))
-        {
-            return false;
-        }
-
-        return getPlaceData(pos) != null;
-    }
-
-    protected boolean shouldSkipPlaced(BlockPos pos)
-    {
-        Long time = placed.get(pos);
-
-        if (time == null)
-        {
-            return false;
-        }
-
-        if (isRecentlyBlocked(pos))
-        {
-            placed.remove(pos);
-            confirmed.remove(pos);
-            return false;
-        }
-
-        return !overPlace.getValue()
-            && System.currentTimeMillis() - time < placedTimeout.getValue();
-    }
-
-    protected boolean isRecentlyBlocked(BlockPos pos)
-    {
-        Long time = recentlyBlocked.get(pos);
-        return time != null
-            && System.currentTimeMillis() - time < blockedTimeout.getValue();
     }
 
     protected BlockPos getPlayerPos()
@@ -465,7 +305,7 @@ public class AutoFeetTrap extends ObbyModule
 
     protected List<BlockPos> getSurroundPositions(BlockPos playerPos)
     {
-        Set<BlockPos> result = new LinkedHashSet<>();
+        Set<BlockPos> targets = new LinkedHashSet<>();
         Set<BlockPos> bases = getBasePositions(playerPos);
 
         for (BlockPos base : bases)
@@ -473,40 +313,42 @@ public class AutoFeetTrap extends ObbyModule
             for (EnumFacing facing : EnumFacing.HORIZONTALS)
             {
                 BlockPos offset = base.offset(facing);
+
                 if (!bases.contains(offset))
                 {
-                    result.add(offset);
+                    targets.add(offset);
                 }
             }
 
             if (floor.getValue())
             {
-                result.add(base.down());
+                targets.add(base.down());
             }
 
             if (mode.getValue() == Mode.FULL)
             {
-                addOffsets(result, base, DIAGONAL_OFFSETS);
+                addOffsets(targets, base, DIAGONAL_OFFSETS);
             }
         }
 
         if (antiStep.getValue())
         {
             Set<BlockPos> upper = new LinkedHashSet<>();
-            for (BlockPos pos : result)
+
+            for (BlockPos pos : targets)
             {
                 upper.add(pos.up());
             }
 
-            result.addAll(upper);
+            targets.addAll(upper);
         }
 
         if (support.getValue())
         {
-            result.addAll(getSupportPositions(result));
+            targets.addAll(getSupportPositions(targets));
         }
 
-        List<BlockPos> list = new ArrayList<>(result);
+        List<BlockPos> list = new ArrayList<>(targets);
         list.sort(Comparator.comparingDouble(this::distanceSq));
         return list;
     }
@@ -628,6 +470,175 @@ public class AutoFeetTrap extends ObbyModule
         return -1;
     }
 
+    protected void placeBlocks(List<BlockPos> targets, int slot)
+    {
+        Locks.acquire(Locks.PLACE_SWITCH_LOCK, () ->
+        {
+            int placedThisTick = 0;
+            int oldSlot = mc.player.inventory.currentItem;
+            boolean switched = false;
+
+            if (slot != -2 && oldSlot != slot)
+            {
+                if (Managers.SWITCH.getLastSwitch() < 50L)
+                {
+                    return;
+                }
+
+                switchTo(slot);
+                switched = true;
+            }
+
+            for (BlockPos pos : targets)
+            {
+                if (placedThisTick >= blocksPerTick.getValue())
+                {
+                    break;
+                }
+
+                if (avoidCrystalTargets.getValue()
+                    && CombatCoordinator.getCrystalPlaceTargets().contains(pos))
+                {
+                    continue;
+                }
+
+                if (canPlaceBlock(pos) && placeBlock(pos, InventoryUtil.getHand(slot), slot))
+                {
+                    long now = System.currentTimeMillis();
+                    placed.put(pos, now);
+                    renderPositions.put(pos, now);
+                    placedThisTick++;
+                }
+            }
+
+            if (switched)
+            {
+                switchTo(oldSlot);
+            }
+        });
+    }
+
+    protected boolean canPlaceBlock(BlockPos pos)
+    {
+        if (mc.player == null || mc.world == null || pos == null)
+        {
+            return false;
+        }
+
+        if (mc.player.getDistanceSq(pos) > square(placeRange.getValue()))
+        {
+            return false;
+        }
+
+        if (!mc.world.getWorldBorder().contains(pos))
+        {
+            return false;
+        }
+
+        if (!mc.world.getBlockState(pos).getMaterial().isReplaceable())
+        {
+            return false;
+        }
+
+        Long time = placed.get(pos);
+
+        if (time != null
+            && !overPlace.getValue()
+            && System.currentTimeMillis() - time < placedTimeout.getValue())
+        {
+            return false;
+        }
+
+        AxisAlignedBB bb = new AxisAlignedBB(pos);
+
+        if (mc.player.getEntityBoundingBox().intersects(bb))
+        {
+            return false;
+        }
+
+        for (Entity entity : mc.world.getEntitiesWithinAABB(Entity.class, bb))
+        {
+            if (entity == null
+                || EntityUtil.isDead(entity)
+                || entity == mc.player
+                || !entity.preventEntitySpawning)
+            {
+                continue;
+            }
+
+            if (entity instanceof EntityEnderCrystal
+                && breakCrystals.getValue()
+                && overPlace.getValue())
+            {
+                if (sharedAttacks.getValue()
+                    && CombatCoordinator.wasCrystalRecentlyAttacked(entity.getEntityId(), 750L))
+                {
+                    continue;
+                }
+
+                if (isRecentlyAttacked(entity.getEntityId()) || attackCrystal(entity))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        return getPlaceData(pos) != null;
+    }
+
+    protected boolean placeBlock(BlockPos pos, EnumHand hand, int slot)
+    {
+        PlaceData data = getPlaceData(pos);
+
+        if (data == null)
+        {
+            return false;
+        }
+
+        if (rotate.getValue())
+        {
+            faceVector(data.hitVec);
+        }
+
+        if (packetPlace.getValue())
+        {
+            float[] placeVec = hitVecToPlaceVec(data.neighbor, data.hitVec);
+
+            PacketUtil.place(
+                data.neighbor,
+                data.clickFace,
+                hand,
+                placeVec[0],
+                placeVec[1],
+                placeVec[2]
+            );
+
+            swing(getSwingHand(swingHand.getValue(), hand));
+            return true;
+        }
+
+        EnumActionResult result = mc.playerController.processRightClickBlock(
+            mc.player,
+            mc.world,
+            data.neighbor,
+            data.clickFace,
+            data.hitVec,
+            hand
+        );
+
+        if (result == EnumActionResult.SUCCESS)
+        {
+            swing(getSwingHand(swingHand.getValue(), hand));
+            return true;
+        }
+
+        return false;
+    }
+
     protected PlaceData getPlaceData(BlockPos pos)
     {
         PlaceData strict = getPlaceData(pos, strictDirection.getValue());
@@ -742,6 +753,113 @@ public class AutoFeetTrap extends ObbyModule
         }
     }
 
+    protected void attackBlockingCrystals(List<BlockPos> targets)
+    {
+        if (!breakCrystals.getValue())
+        {
+            return;
+        }
+
+        for (BlockPos pos : targets)
+        {
+            AxisAlignedBB bb = new AxisAlignedBB(pos);
+
+            for (Entity entity : mc.world.getEntitiesWithinAABB(Entity.class, bb))
+            {
+                if (!(entity instanceof EntityEnderCrystal)
+                    || EntityUtil.isDead(entity)
+                    || mc.player.getDistanceSq(entity.posX, entity.posY, entity.posZ)
+                        > square(breakRange.getValue()))
+                {
+                    continue;
+                }
+
+                if (sharedAttacks.getValue()
+                    && CombatCoordinator.wasCrystalRecentlyAttacked(entity.getEntityId(), 750L))
+                {
+                    return;
+                }
+
+                attackCrystal(entity);
+                return;
+            }
+        }
+    }
+
+    protected boolean attackCrystal(Entity entity)
+    {
+        if (!breakCrystals.getValue())
+        {
+            return false;
+        }
+
+        if (!canBreakNow())
+        {
+            return false;
+        }
+
+        if (mc.player.getDistanceSq(entity.posX, entity.posY, entity.posZ)
+            > square(breakRange.getValue()))
+        {
+            return false;
+        }
+
+        if (rotate.getValue())
+        {
+            faceVector(entity.getPositionVector().add(0.0, entity.height * 0.5, 0.0));
+        }
+
+        mc.player.connection.sendPacket(new CPacketUseEntity(entity));
+        swing(EnumHand.MAIN_HAND);
+
+        attackedCrystals.put(entity.getEntityId(), System.currentTimeMillis());
+        CombatCoordinator.markCrystalAttacked(entity.getEntityId());
+        lastBreak = System.currentTimeMillis();
+
+        return true;
+    }
+
+    protected boolean attackCrystal(int id, Vec3d vec)
+    {
+        if (!breakCrystals.getValue())
+        {
+            return false;
+        }
+
+        if (!canBreakNow())
+        {
+            return false;
+        }
+
+        if (mc.player.getDistanceSq(vec.x, vec.y, vec.z) > square(breakRange.getValue()))
+        {
+            return false;
+        }
+
+        if (rotate.getValue())
+        {
+            faceVector(vec);
+        }
+
+        PacketUtil.attack(id);
+        attackedCrystals.put(id, System.currentTimeMillis());
+        CombatCoordinator.markCrystalAttacked(id);
+        lastBreak = System.currentTimeMillis();
+
+        return true;
+    }
+
+    protected boolean canBreakNow()
+    {
+        return System.currentTimeMillis() - lastBreak >= breakDelay.getValue();
+    }
+
+    protected boolean isRecentlyAttacked(int id)
+    {
+        Long time = attackedCrystals.get(id);
+        return time != null && System.currentTimeMillis() - time < 500L;
+    }
+
     protected void onCrystalSpawn(SPacketSpawnObject packet)
     {
         if (!predict.getValue()
@@ -760,11 +878,11 @@ public class AutoFeetTrap extends ObbyModule
                                     packet.getZ());
 
         AxisAlignedBB crystalBB = crystal.getEntityBoundingBox();
+        List<BlockPos> targets = getSurroundPositions(getPlayerPos());
 
-        List<BlockPos> currentTargets = getSurroundPositions(getPlayerPos());
         BlockPos target = null;
 
-        for (BlockPos pos : currentTargets)
+        for (BlockPos pos : targets)
         {
             if (crystalBB.intersects(new AxisAlignedBB(pos)))
             {
@@ -778,43 +896,21 @@ public class AutoFeetTrap extends ObbyModule
             return;
         }
 
-        slot = findBlockInHotbar();
+        int slot = findBlockInHotbar();
+
         if (slot == -1)
         {
             return;
         }
 
-        if (!isRecentlyAttacked(packet.getEntityID()))
-        {
-            Vec3d crystalVec = new Vec3d(packet.getX(), packet.getY(), packet.getZ());
+        Vec3d crystalVec = new Vec3d(packet.getX(), packet.getY(), packet.getZ());
 
-            if (mc.player.getDistanceSq(crystalVec.x, crystalVec.y, crystalVec.z)
-                <= square(breakRange.getValue()))
-            {
-                if (rotate.getValue() != Rotate.None)
-                {
-                    float[] r = getRotations(crystalVec);
-                    PacketUtil.doRotation(r[0], r[1], mc.player.onGround);
-                }
+        attackCrystal(packet.getEntityID(), crystalVec);
 
-                PacketUtil.attack(packet.getEntityID());
-                attackedCrystals.put(packet.getEntityID(), System.currentTimeMillis());
-                attackTimer.reset();
-            }
-        }
+        List<BlockPos> one = new ArrayList<>();
+        one.add(target);
 
-        if (!canAttemptPlace(target))
-        {
-            return;
-        }
-
-        int before = blocksPlaced;
-        placeBlock(target);
-
-        if (blocksPlaced > before)
-        {
-            Locks.acquire(Locks.PLACE_SWITCH_LOCK, this::execute);
-        }
+        placeBlocks(one, slot);
     }
 
     protected boolean shouldDisable()
@@ -853,7 +949,7 @@ public class AutoFeetTrap extends ObbyModule
 
     protected void centerPlayerIfNeeded()
     {
-        if (!centerPlayer.getValue() || mc.player == null || centered)
+        if (!centerPlayer.getValue() || mc.player == null)
         {
             return;
         }
@@ -868,73 +964,24 @@ public class AutoFeetTrap extends ObbyModule
             mc.player.motionX += dx * 0.15;
             mc.player.motionZ += dz * 0.15;
         }
-        else
-        {
-            centered = true;
-        }
     }
 
-    protected void onBlockChange(BlockPos pos, IBlockState state)
+    protected void switchTo(int slot)
     {
-        if (!targets.contains(pos) && !placed.containsKey(pos))
+        if (mc.player == null
+            || slot < 0
+            || slot > 8
+            || mc.player.inventory.currentItem == slot)
         {
             return;
         }
 
-        if (state.getMaterial().isReplaceable())
-        {
-            confirmed.remove(pos);
-            recentlyBlocked.put(pos, System.currentTimeMillis());
-        }
-        else
-        {
-            confirmed.put(pos, System.currentTimeMillis());
-            placed.remove(pos);
-        }
+        mc.player.connection.sendPacket(new CPacketHeldItemChange(slot));
+        mc.player.inventory.currentItem = slot;
+        InventoryUtil.syncItem();
     }
 
-    protected void onExplosion(List<BlockPos> affected)
-    {
-        long now = System.currentTimeMillis();
-
-        for (BlockPos pos : affected)
-        {
-            if (targets.contains(pos) || placed.containsKey(pos) || confirmed.containsKey(pos))
-            {
-                confirmed.remove(pos);
-                placed.remove(pos);
-                recentlyBlocked.put(pos, now);
-            }
-        }
-    }
-
-    protected boolean isRecentlyAttacked(int id)
-    {
-        Long time = attackedCrystals.get(id);
-        return time != null && System.currentTimeMillis() - time < 500L;
-    }
-
-    protected void cleanCaches()
-    {
-        long now = System.currentTimeMillis();
-
-        placed.entrySet().removeIf(e ->
-            now - e.getValue() > placedTimeout.getValue());
-
-        confirmed.entrySet().removeIf(e ->
-            now - e.getValue() > 5000L);
-
-        recentlyBlocked.entrySet().removeIf(e ->
-            now - e.getValue() > blockedTimeout.getValue());
-
-        renderPositions.entrySet().removeIf(e ->
-            now - e.getValue() > Math.max(placedTimeout.getValue(), fadeTime.getValue()));
-
-        attackedCrystals.entrySet().removeIf(e ->
-            now - e.getValue() > 500L);
-    }
-
-    protected float[] getRotations(Vec3d vec)
+    protected void faceVector(Vec3d vec)
     {
         double x = vec.x - mc.player.posX;
         double y = vec.y - (mc.player.posY + mc.player.getEyeHeight());
@@ -944,11 +991,75 @@ public class AutoFeetTrap extends ObbyModule
         float yaw = (float) Math.toDegrees(Math.atan2(z, x)) - 90.0f;
         float pitch = (float) -Math.toDegrees(Math.atan2(y, dist));
 
+        Managers.ROTATION.setBlocking(true);
+        mc.player.connection.sendPacket(
+            new CPacketPlayer.Rotation(yaw, pitch, mc.player.onGround));
+        Managers.ROTATION.setBlocking(false);
+    }
+
+    protected float[] hitVecToPlaceVec(BlockPos on, Vec3d hitVec)
+    {
         return new float[]
         {
-            yaw,
-            pitch
+            (float) (hitVec.x - on.getX()),
+            (float) (hitVec.y - on.getY()),
+            (float) (hitVec.z - on.getZ())
         };
+    }
+
+    protected void swing(EnumHand hand)
+    {
+        if (handSwing.getValue() == HandSwing.NONE)
+        {
+            return;
+        }
+
+        if (handSwing.getValue() == HandSwing.CLIENT
+            || handSwing.getValue() == HandSwing.BOTH)
+        {
+            mc.player.swingArm(hand);
+        }
+
+        if (handSwing.getValue() == HandSwing.PACKET
+            || handSwing.getValue() == HandSwing.BOTH)
+        {
+            mc.player.connection.sendPacket(new CPacketAnimation(hand));
+        }
+    }
+
+    protected EnumHand getSwingHand(SwingHand setting, EnumHand fallback)
+    {
+        switch (setting)
+        {
+            case MAINHAND:
+                return EnumHand.MAIN_HAND;
+            case OFFHAND:
+                return EnumHand.OFF_HAND;
+            case AUTO:
+            default:
+                return fallback;
+        }
+    }
+
+    protected void cleanCaches()
+    {
+        long now = System.currentTimeMillis();
+
+        placed.entrySet().removeIf(e ->
+            now - e.getValue() > placedTimeout.getValue());
+
+        renderPositions.entrySet().removeIf(e ->
+            now - e.getValue() > Math.max(placedTimeout.getValue(), fadeTime.getValue()));
+
+        attackedCrystals.entrySet().removeIf(e ->
+            now - e.getValue() > 500L);
+
+        CombatCoordinator.clean();
+    }
+
+    protected void removePlaced(BlockPos pos)
+    {
+        placed.remove(pos);
     }
 
     private double distanceSq(BlockPos pos)
@@ -998,25 +1109,39 @@ public class AutoFeetTrap extends ObbyModule
         ANY_SOLID
     }
 
-    private static final class ListenerMotion
-        extends ModuleListener<AutoFeetTrap, MotionUpdateEvent>
+    public enum HandSwing
     {
-        private ListenerMotion(AutoFeetTrap module)
+        NONE,
+        CLIENT,
+        PACKET,
+        BOTH
+    }
+
+    public enum SwingHand
+    {
+        AUTO,
+        MAINHAND,
+        OFFHAND
+    }
+
+    public enum RenderMode
+    {
+        NORMAL,
+        FADE
+    }
+
+    private static final class ListenerTick
+        extends ModuleListener<AutoFeetTrap, TickEvent>
+    {
+        private ListenerTick(AutoFeetTrap module)
         {
-            super(module, MotionUpdateEvent.class, -999999999);
+            super(module, TickEvent.class);
         }
 
         @Override
-        public void invoke(MotionUpdateEvent event)
+        public void invoke(TickEvent event)
         {
-            if (event.getStage() == Stage.PRE)
-            {
-                module.onMotionPre(event);
-            }
-            else
-            {
-                module.onMotionPost();
-            }
+            module.onTick();
         }
     }
 
@@ -1046,8 +1171,7 @@ public class AutoFeetTrap extends ObbyModule
         @Override
         public void invoke(PacketEvent.Receive<SPacketBlockChange> event)
         {
-            SPacketBlockChange packet = event.getPacket();
-            module.onBlockChange(packet.getBlockPosition(), packet.getBlockState());
+            module.removePlaced(event.getPacket().getBlockPosition());
         }
     }
 
@@ -1065,23 +1189,8 @@ public class AutoFeetTrap extends ObbyModule
             for (SPacketMultiBlockChange.BlockUpdateData data
                 : event.getPacket().getChangedBlocks())
             {
-                module.onBlockChange(data.getPos(), data.getBlockState());
+                module.removePlaced(data.getPos());
             }
-        }
-    }
-
-    private static final class ListenerExplosion
-        extends ModuleListener<AutoFeetTrap, PacketEvent.Receive<SPacketExplosion>>
-    {
-        private ListenerExplosion(AutoFeetTrap module)
-        {
-            super(module, PacketEvent.Receive.class, SPacketExplosion.class);
-        }
-
-        @Override
-        public void invoke(PacketEvent.Receive<SPacketExplosion> event)
-        {
-            module.onExplosion(event.getPacket().getAffectedBlockPositions());
         }
     }
 
@@ -1141,17 +1250,21 @@ public class AutoFeetTrap extends ObbyModule
                 Color fill = module.fill.getValue();
                 Color line = module.line.getValue();
 
-                int fillAlpha = MathHelper.clamp(
-                    (int) (fill.getAlpha() * (1.0f - age / (float) fade)),
-                    0,
-                    fill.getAlpha()
-                );
+                int fillAlpha = module.renderMode.getValue() == RenderMode.FADE
+                    ? MathHelper.clamp(
+                        (int) (fill.getAlpha() * (1.0f - age / (float) fade)),
+                        0,
+                        fill.getAlpha()
+                    )
+                    : fill.getAlpha();
 
-                int lineAlpha = MathHelper.clamp(
-                    (int) (line.getAlpha() * (1.0f - age / (float) fade)),
-                    0,
-                    line.getAlpha()
-                );
+                int lineAlpha = module.renderMode.getValue() == RenderMode.FADE
+                    ? MathHelper.clamp(
+                        (int) (line.getAlpha() * (1.0f - age / (float) fade)),
+                        0,
+                        line.getAlpha()
+                    )
+                    : line.getAlpha();
 
                 RenderUtil.renderBox(
                     Interpolation.interpolatePos(entry.getKey(), 1.0f),

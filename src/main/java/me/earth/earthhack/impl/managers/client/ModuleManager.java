@@ -46,6 +46,7 @@ import me.earth.earthhack.impl.modules.misc.buildheight.BuildHeight;
 import me.earth.earthhack.impl.modules.misc.chat.Chat;
 import me.earth.earthhack.impl.modules.misc.mcf.MCF;
 import me.earth.earthhack.impl.modules.misc.tpssync.TpsSync;
+import me.earth.earthhack.impl.modules.misc.fastbreak.FastBreak;
 import me.earth.earthhack.impl.modules.movement.blocklag.BlockLag;
 import me.earth.earthhack.impl.modules.movement.tickshift.TickShift;
 import me.earth.earthhack.impl.modules.movement.velocity.Velocity;
@@ -100,6 +101,7 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new Chat());
         this.forceRegister(new MCF());
         this.forceRegister(new TpsSync());
+        this.forceRegister(new FastBreak());
 
         this.forceRegister(new BlockLag());
         this.forceRegister(new TickShift());
