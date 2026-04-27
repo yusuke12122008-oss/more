@@ -1,5 +1,8 @@
 package me.earth.earthhack.impl.managers.client;
 
+
+
+import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
 import me.earth.earthhack.api.event.bus.instance.Bus;
 import me.earth.earthhack.api.module.Module;
 import me.earth.earthhack.api.module.util.Category;
@@ -32,8 +35,8 @@ import me.earth.earthhack.impl.modules.client.safety.Safety;
 import me.earth.earthhack.impl.modules.client.server.ServerModule;
 import me.earth.earthhack.impl.modules.client.settings.SettingsModule;
 import me.earth.earthhack.impl.modules.client.tab.TabModule;
-import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
-import me.earth.earthhack.impl.modules.combat.autocrystal2.AutoCrystal2;
+
+import me.earth.earthhack.impl.modules.combat.autofeettrap.AutoFeetTrap;
 import me.earth.earthhack.impl.modules.combat.holefiller.HoleFiller;
 import me.earth.earthhack.impl.modules.combat.killaura.KillAura;
 import me.earth.earthhack.impl.modules.combat.offhand.Offhand;
@@ -43,6 +46,7 @@ import me.earth.earthhack.impl.modules.misc.buildheight.BuildHeight;
 import me.earth.earthhack.impl.modules.misc.chat.Chat;
 import me.earth.earthhack.impl.modules.misc.mcf.MCF;
 import me.earth.earthhack.impl.modules.misc.tpssync.TpsSync;
+import me.earth.earthhack.impl.modules.misc.fastbreak.FastBreak;
 import me.earth.earthhack.impl.modules.movement.blocklag.BlockLag;
 import me.earth.earthhack.impl.modules.movement.tickshift.TickShift;
 import me.earth.earthhack.impl.modules.movement.velocity.Velocity;
@@ -84,8 +88,9 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new TabModule());
         this.forceRegister(new Media());
 
+
         this.forceRegister(new AutoCrystal());
-        this.forceRegister(new AutoCrystal2());
+        this.forceRegister(new AutoFeetTrap());
         this.forceRegister(new HoleFiller());
         this.forceRegister(new KillAura());
         this.forceRegister(new Offhand());
@@ -96,6 +101,7 @@ public class ModuleManager extends IterationRegister<Module>
         this.forceRegister(new Chat());
         this.forceRegister(new MCF());
         this.forceRegister(new TpsSync());
+        this.forceRegister(new FastBreak());
 
         this.forceRegister(new BlockLag());
         this.forceRegister(new TickShift());
@@ -149,3 +155,4 @@ public class ModuleManager extends IterationRegister<Module>
         return iModules;
     }
 }
+

@@ -12,8 +12,6 @@ import me.earth.earthhack.api.setting.settings.EnumSetting;
 import me.earth.earthhack.api.setting.settings.NumberSetting;
 import me.earth.earthhack.impl.commands.ModuleCommand;
 import me.earth.earthhack.impl.modules.Caches;
-import me.earth.earthhack.impl.modules.combat.autocrystal.AutoCrystal;
-import me.earth.earthhack.impl.modules.combat.autocrystal.modes.ACRotate;
 import me.earth.earthhack.impl.modules.combat.killaura.KillAura;
 import me.earth.earthhack.impl.modules.movement.blocklag.BlockLag;
 
@@ -28,9 +26,9 @@ import me.earth.earthhack.impl.util.minecraft.CooldownBypass;
 import java.util.function.BiConsumer;
 
 public class AntiCheat extends Module {
-    private static final SettingCache<ACRotate, Setting<ACRotate>, AutoCrystal>
-        AC_ROTATE = Caches.getSetting(
-            AutoCrystal.class, EnumSetting.class, "Rotate", ACRotate.None);
+//    private static final SettingCache<ACRotate, Setting<ACRotate>, AutoCrystal>
+//        AC_ROTATE = Caches.getSetting(
+//            AutoCrystal.class, EnumSetting.class, "Rotate", ACRotate.None);
     private static final SettingCache<Boolean, Setting<Boolean>, KillAura>
         KILL_AURA_ROTATE = Caches.getSetting(
             KillAura.class, BooleanSetting.class, "Rotate", false);
@@ -161,6 +159,7 @@ public class AntiCheat extends Module {
         });
 
         addSyncedObserver(attackRotations, e -> {
+/*
             Setting<ACRotate> acRotate = AC_ROTATE.get();
             if (acRotate != null) {
                 if (e.getValue()) {
@@ -177,6 +176,7 @@ public class AntiCheat extends Module {
                     }
                 }
             }
+*/
 
             Setting<Boolean> killAuraRotate = KILL_AURA_ROTATE.get();
             if (killAuraRotate != null) {

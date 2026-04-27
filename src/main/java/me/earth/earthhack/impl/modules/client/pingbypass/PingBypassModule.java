@@ -19,7 +19,6 @@ import me.earth.earthhack.impl.modules.client.pingbypass.serializer.friend.Frien
 import me.earth.earthhack.impl.modules.client.pingbypass.serializer.setting.PbSettingSerializer;
 import me.earth.earthhack.impl.modules.client.pingbypass.serializer.setting.SettingSerializer;
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sSafety.ServerSafety;
-import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sautocrystal.ServerAutoCrystal;
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sautototem.ServerAutoTotem;
 import me.earth.earthhack.impl.modules.client.pingbypass.submodules.sinventory.ServerInventory;
 
@@ -87,7 +86,6 @@ public class PingBypassModule extends Module
         Bus.EVENT_BUS.register(new ListenerInit(this));
 
         ServerAutoTotem sAutoTotem = new ServerAutoTotem(this);
-        ServerAutoCrystal sCrystal = new ServerAutoCrystal(this);
         ServerInventory sInventory = new ServerInventory(this);
         ServerSafety sSafety = new ServerSafety(this);
 
@@ -96,7 +94,6 @@ public class PingBypassModule extends Module
         try
         {
             Managers.MODULES.register(sAutoTotem);
-            Managers.MODULES.register(sCrystal);
             Managers.MODULES.register(sInventory);
             Managers.MODULES.register(sSafety);
         }
@@ -109,7 +106,6 @@ public class PingBypassModule extends Module
 
         serializer = new SettingSerializer(this,
                                             sAutoTotem,
-                                            sCrystal,
                                             Managers.MODULES.getByClass(FakePlayer.class),
                                             sSafety,
                                             null,

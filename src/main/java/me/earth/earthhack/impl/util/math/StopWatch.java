@@ -21,6 +21,16 @@ public class StopWatch implements Passable
         return this;
     }
 
+    /**
+     * Compatibility overload for call-sites that still pass a delay argument.
+     * The delay itself is checked in {@link #passed(long)}, so reset always
+     * restarts the watch from "now".
+     */
+    public StopWatch reset(long ignored)
+    {
+        return reset();
+    }
+
     public long getTime()
     {
         return System.currentTimeMillis() - time;
