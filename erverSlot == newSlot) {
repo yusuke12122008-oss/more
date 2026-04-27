@@ -1,0 +1,16 @@
+warning: in the working copy of 'src/main/java/me/earth/earthhack/impl/modules/combat/autocrystal/ListenerPacketSendSwap.java', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/main/java/me/earth/earthhack/impl/modules/combat/autocrystal/ListenerPacketSendSwap.java b/src/main/java/me/earth/earthhack/impl/modules/combat/autocrystal/ListenerPacketSendSwap.java[m
+[1mindex 9b4f647..c5ec96c 100644[m
+[1m--- a/src/main/java/me/earth/earthhack/impl/modules/combat/autocrystal/ListenerPacketSendSwap.java[m
+[1m+++ b/src/main/java/me/earth/earthhack/impl/modules/combat/autocrystal/ListenerPacketSendSwap.java[m
+[36m@@ -38,8 +38,8 @@[m [mfinal class ListenerPacketSendSwap[m
+         CPacketHeldItemChange packet = event.getPacket();[m
+         int newSlot = packet.getSlotId();[m
+ [m
+[31m-        // ---- 重複パケットのキャンセル ----[m
+[31m-        // サーバーがすでに認識しているスロットへの再送は不要[m
+[32m+[m[32m        // ---- 重複パケットのスキップ ----[m
+[32m+[m[32m        // サーバーがすでに認識しているスロットは追跡不要[m
+         int serverSlot = module.swapStateTracker.getServerSlot();[m
+         if (serverSlot == newSlot) {[m
+             event.cancel(); // 同スロットへの CPacketHeldItemChange をキャンセル[m

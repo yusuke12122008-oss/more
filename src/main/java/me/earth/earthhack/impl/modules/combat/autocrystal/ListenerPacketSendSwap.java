@@ -38,8 +38,8 @@ final class ListenerPacketSendSwap
         CPacketHeldItemChange packet = event.getPacket();
         int newSlot = packet.getSlotId();
 
-        // ---- 重複パケットのキャンセル ----
-        // サーバーがすでに認識しているスロットへの再送は不要
+        // ---- 重複パケットのスキップ ----
+        // サーバーがすでに認識しているスロットは追跡不要
         int serverSlot = module.swapStateTracker.getServerSlot();
         if (serverSlot == newSlot) {
             event.cancel(); // 同スロットへの CPacketHeldItemChange をキャンセル
